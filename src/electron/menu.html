@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'none'; font-src 'none'; connect-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Promethee Pomodoro</title>
+    <link rel="stylesheet" href="./styles/tokens.css" />
+    <link rel="stylesheet" href="./menu.css" />
+  </head>
+  <body>
+    <main class="runtime-menu" role="dialog" aria-modal="false" aria-labelledby="menuTitle">
+      <header class="menu-header">
+        <div class="phase-mark" aria-hidden="true"></div>
+        <div class="phase-copy">
+          <p class="menu-kicker" id="phaseLabel">FOCUS</p>
+          <h1 id="menuTitle" tabindex="-1"><span id="remainingTime">25:00</span><small id="sessionStatus">Promethee</small></h1>
+        </div>
+        <button class="icon-button" id="closeMenu" type="button" aria-label="Close Pomodoro menu" data-copy-aria="close">
+          <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="m4.25 4.25 7.5 7.5m0-7.5-7.5 7.5"></path></svg>
+        </button>
+      </header>
+
+      <section class="onboarding-panel" id="onboardingPanel" aria-labelledby="onboardingTitle" hidden>
+        <div class="onboarding-heading">
+          <p class="panel-kicker" data-copy="setup">SETUP</p>
+          <h2 id="onboardingTitle" tabindex="-1" data-copy="onboardingTitle">One last setup</h2>
+          <p data-copy="onboardingIntro">Allow both macOS permissions once. Promethee Pomodoro stays limited to the timer HUD.</p>
+        </div>
+        <div class="permission-list" role="list" aria-label="Required permissions" data-copy-aria="requiredPermissions">
+          <div class="permission-row" id="inputPermissionRow" data-state="pending" role="listitem">
+            <span class="permission-check" aria-hidden="true">
+              <svg viewBox="0 0 16 16"><path d="m4.25 8.25 2.4 2.4 5.1-5.3"></path></svg>
+            </span>
+            <span class="permission-copy"><strong data-copy="inputEvents">Accessibility & Input Events</strong><small id="inputPermissionStatus" data-copy="permissionPending">Waiting for approval</small></span>
+            <button class="compact-button" id="openInputSettings" type="button" data-copy="openSettings" data-copy-aria="openInputSettingsLabel">Open</button>
+          </div>
+          <div class="permission-row" id="capturePermissionRow" data-state="pending" role="listitem">
+            <span class="permission-check" aria-hidden="true">
+              <svg viewBox="0 0 16 16"><path d="m4.25 8.25 2.4 2.4 5.1-5.3"></path></svg>
+            </span>
+            <span class="permission-copy"><strong data-copy="screenRecording">Screen Recording</strong><small id="capturePermissionStatus" data-copy="permissionPending">Waiting for approval</small></span>
+            <button class="compact-button" id="openCaptureSettings" type="button" data-copy="openSettings" data-copy-aria="openCaptureSettingsLabel">Open</button>
+          </div>
+        </div>
+        <p class="onboarding-note" id="permissionFeedback" role="status" aria-live="polite" data-copy="permissionHelp">Tick Promethee Pomodoro in System Settings, then check again.</p>
+        <div class="onboarding-actions">
+          <button class="text-button" id="dismissOnboarding" type="button" data-copy="notNow">Not now</button>
+          <button class="text-button" id="refreshPermissions" type="button" data-copy="checkAgain">Check again</button>
+          <button class="primary-button" id="completeOnboarding" type="button" data-copy="continue" disabled>Continue</button>
+        </div>
+      </section>
+
+      <nav class="menu-tabs" id="menuTabs" role="tablist" aria-label="Pomodoro menu sections" data-copy-aria="menuSections">
+        <button class="menu-tab is-current" id="contextTab" type="button" role="tab" aria-controls="contextPanel" aria-selected="true" tabindex="0">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.25"></circle><path d="M8 5.25v3.1l2.1 1.2"></path></svg>
+          <span data-copy="context">Context</span>
+        </button>
+        <button class="menu-tab" id="tasksTab" type="button" role="tab" aria-controls="tasksPanel" aria-selected="false" tabindex="-1">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.25 4.25h9.5M3.25 8h9.5M3.25 11.75h6.25"></path></svg>
+          <span data-copy="tasks">Tasks</span>
+        </button>
+        <button class="menu-tab" id="historyTab" type="button" role="tab" aria-controls="historyPanel" aria-selected="false" tabindex="-1">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.4 5.15A5.25 5.25 0 1 1 2.8 9"></path><path d="M2.8 2.75v2.8h2.8M8 4.8v3.45l2.3 1.3"></path></svg>
+          <span data-copy="history">History</span>
+        </button>
+        <button class="menu-tab" id="settingsTab" type="button" role="tab" aria-controls="settingsPanel" aria-selected="false" tabindex="-1">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.15"></circle><path d="M8 2.45v1.1M8 12.45v1.1M2.45 8h1.1M12.45 8h1.1M4.08 4.08l.78.78M11.14 11.14l.78.78M11.92 4.08l-.78.78M4.86 11.14l-.78.78"></path></svg>
+          <span data-copy="settings">Settings</span>
+        </button>
+      </nav>
+
+      <section class="menu-panel" id="contextPanel" role="tabpanel" aria-labelledby="contextTab" tabindex="0">
+        <div class="tracking-strip" id="trackingStrip" data-state="idle">
+          <span class="tracking-strip__signal" aria-hidden="true"></span>
+          <span class="tracking-strip__copy">
+            <small id="trackingEyebrow" data-copy="readyToTrack">Ready to track</small>
+            <strong id="trackingTask">No task selected</strong>
+          </span>
+          <button class="quiet-icon-button" id="showTasks" type="button" aria-label="Choose a task" data-copy-aria="chooseTask">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 3.75 9.75 8 5.5 12.25"></path></svg>
+          </button>
+        </div>
+        <dl class="fact-list">
+          <div><dt data-copy="cycle">Cycle</dt><dd id="cycleValue">1 / 4</dd></div>
+          <div><dt data-copy="automation">Automation</dt><dd id="automationValue">Pause on · Resume off</dd></div>
+        </dl>
+        <div class="context-footer">
+          <div class="connection-status" role="status" aria-live="polite">
+            <span class="status-dot" id="statusDot" aria-hidden="true"></span>
+            <span id="statusTitle">Promethee connected</span>
+          </div>
+          <div class="context-actions">
+            <button class="reset-button" id="skipPhase" type="button" disabled>
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.25 3.5 9.5 8l-6.25 4.5zM11.75 3.5v9"></path></svg>
+              <span data-copy="skipPhase">Skip phase</span>
+            </button>
+            <button class="reset-button" id="resetTimer" type="button">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12.3 5.25A5 5 0 1 0 13 9.6"></path><path d="M12.4 2.75v2.9H9.5"></path></svg>
+              <span data-copy="resetTimer">Reset timer</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="menu-panel tasks-panel" id="tasksPanel" role="tabpanel" aria-labelledby="tasksTab" tabindex="0" hidden>
+        <div class="panel-heading">
+          <div><p class="panel-kicker" data-copy="prometheeContext">PROMETHEE CONTEXT</p><h2 data-copy="chooseTask">Choose a task</h2></div>
+          <button class="quiet-icon-button quiet-icon-button--bordered" id="refreshTasks" type="button" aria-label="Refresh tasks" data-copy-aria="refresh">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12.35 5.2A5 5 0 1 0 13 9.55"></path><path d="M12.45 2.75v2.9h-2.9"></path></svg>
+          </button>
+        </div>
+        <p class="source-status" id="taskSourceStatus" role="status" aria-live="polite" data-copy="loadingTasks">Loading tasks…</p>
+        <div class="task-list scroll-region" id="taskList" role="radiogroup" aria-label="Promethee tasks" data-copy-aria="taskList"></div>
+        <div class="tracking-action-row">
+          <span class="tracking-action-row__status" id="trackingActionStatus" role="status" aria-live="polite" data-copy="selectTaskToTrack">Select a task to track</span>
+          <button class="primary-button" id="trackingAction" type="button" disabled>
+            <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="4.75"></circle><path d="M8 1.75v2M8 12.25v2M1.75 8h2M12.25 8h2"></path></svg>
+            <span id="trackingActionLabel" data-copy="trackTask">Track task</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="menu-panel history-panel" id="historyPanel" role="tabpanel" aria-labelledby="historyTab" tabindex="0" hidden>
+        <div class="panel-heading panel-heading--history">
+          <div><p class="panel-kicker" data-copy="timeLedger">TIME LEDGER</p><h2 data-copy="history">History</h2></div>
+          <button class="compact-button compact-button--icon" id="exportHistory" type="button" disabled>
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.25v7.5M5.25 7 8 9.75 10.75 7M3 11.5v1.25h10V11.5"></path></svg>
+            <span data-copy="exportCsv">Export CSV</span>
+          </button>
+        </div>
+        <dl class="history-summary" aria-label="Time summary" data-copy-aria="timeSummary">
+          <div><dt data-copy="today">Today</dt><dd id="todayTotal">—</dd></div>
+          <div><dt data-copy="thisWeek">This week</dt><dd id="weekTotal">—</dd></div>
+          <div><dt data-copy="sessions">Sessions</dt><dd id="sessionCount">—</dd></div>
+        </dl>
+        <div class="history-feedback" id="historyFeedback" role="status" aria-live="polite">
+          <span id="historyStatus" data-copy="loadingHistory">Loading history…</span>
+          <button class="text-button" id="retryHistory" type="button" data-copy="retry" hidden>Retry</button>
+        </div>
+        <div class="history-list scroll-region" id="historyList" aria-label="Tracked time entries" data-copy-aria="historyEntries"></div>
+        <div class="history-pagination">
+          <button class="text-button" id="loadOlderHistory" type="button" data-copy="loadOlder" hidden>Load older</button>
+        </div>
+      </section>
+
+      <section class="menu-panel settings-panel" id="settingsPanel" role="tabpanel" aria-labelledby="settingsTab" tabindex="0" hidden>
+        <p class="settings-note" id="settingsNote" data-copy="settingsNote">Saved locally. New durations apply to the next compatible phase.</p>
+        <div class="setting-list">
+          <label class="setting-row">
+            <span><strong data-copy="focus">Focus</strong><small data-copy="focusHelp">Deep work duration</small></span>
+            <span class="number-control"><input id="focusMinutes" type="number" min="1" max="180" value="25" aria-describedby="settingsNote" /><span class="number-control__unit">min</span></span>
+          </label>
+          <label class="setting-row">
+            <span><strong data-copy="shortBreak">Short break</strong><small data-copy="shortBreakHelp">Between focus periods</small></span>
+            <span class="number-control"><input id="shortBreakMinutes" type="number" min="1" max="60" value="5" aria-describedby="settingsNote" /><span class="number-control__unit">min</span></span>
+          </label>
+          <label class="setting-row">
+            <span><strong data-copy="longBreak">Long break</strong><small data-copy="longBreakHelp">After the configured cadence</small></span>
+            <span class="number-control"><input id="longBreakMinutes" type="number" min="1" max="120" value="15" aria-describedby="settingsNote" /><span class="number-control__unit">min</span></span>
+          </label>
+          <label class="setting-row">
+            <span><strong data-copy="cadence">Long break every</strong><small data-copy="cadenceHelp">Completed focuses</small></span>
+            <span class="number-control"><input id="cadence" type="number" min="1" max="12" value="4" aria-describedby="settingsNote" /><span class="number-control__unit" data-copy="focuses">focuses</span></span>
+          </label>
+          <label class="setting-row setting-row--toggle">
+            <span><strong data-copy="autoPause">Auto-pause Promethee</strong><small data-copy="autoPauseHelp">Once when focus reaches zero</small></span>
+            <input id="autoPause" type="checkbox" aria-describedby="settingsNote" />
+          </label>
+          <label class="setting-row setting-row--toggle">
+            <span><strong data-copy="autoResume">Auto-resume Promethee</strong><small data-copy="autoResumeHelp">Once when the break ends</small></span>
+            <input id="autoResume" type="checkbox" aria-describedby="settingsNote" />
+          </label>
+          <div class="setting-row update-row">
+            <span><strong data-copy="permissions">Permissions</strong><small id="settingsPermissionStatus" data-copy="permissionPending">Waiting for approval</small></span>
+            <button class="compact-button" id="reviewPermissions" type="button" data-copy="review">Review</button>
+          </div>
+          <div class="setting-row update-row">
+            <span><strong data-copy="updates">Updates</strong><small id="updateStatus" data-copy="updateManual">Checked only when requested</small></span>
+            <button class="compact-button" id="checkUpdate" type="button" data-copy="checkUpdate">Check</button>
+          </div>
+        </div>
+        <p class="local-status" id="localStatus" role="status" aria-live="polite" data-copy="saved">Saved locally</p>
+      </section>
+    </main>
+    <script type="module" src="./menu.js"></script>
+  </body>
+</html>

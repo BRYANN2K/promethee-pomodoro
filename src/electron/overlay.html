@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'none'; font-src 'none'; connect-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Promethee Pomodoro progress</title>
+    <link rel="stylesheet" href="./styles/tokens.css" />
+    <link rel="stylesheet" href="./overlay.css" />
+  </head>
+  <body>
+    <svg
+      class="calibration-outline"
+      id="calibrationOutline"
+      aria-hidden="true"
+      focusable="false"
+      preserveAspectRatio="none"
+    >
+      <rect class="calibration-outline__path" id="calibrationOutlinePath" pathLength="1" vector-effect="non-scaling-stroke"></rect>
+    </svg>
+    <script type="module" src="./overlay.js"></script>
+  </body>
+</html>

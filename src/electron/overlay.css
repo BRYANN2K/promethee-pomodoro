@@ -1,0 +1,39 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+  pointer-events: none;
+  user-select: none;
+}
+
+.calibration-outline {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.calibration-outline__path {
+  fill: none;
+  stroke: var(--color-phase-focus);
+  stroke-dasharray: 1;
+  stroke-dashoffset: calc(1 - var(--runtime-progress, 1));
+  stroke-linecap: round;
+  stroke-width: var(--border-outline-progress);
+  transition: stroke 120ms ease-out;
+}
+
+html[data-phase="short-break"] .calibration-outline__path,
+html[data-phase="long-break"] .calibration-outline__path,
+html[data-phase="ready"] .calibration-outline__path,
+html[data-phase="awaiting-resume"] .calibration-outline__path { stroke: var(--color-phase-break); }
+
+@media (prefers-reduced-motion: reduce) { .calibration-outline__path { transition: none; } }

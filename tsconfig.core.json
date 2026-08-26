@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "rootDir": "src/core",
+    "outDir": "dist/core",
+    "lib": ["ES2022"],
+    "types": []
+  },
+  "include": ["src/core/**/*.ts"]
+}

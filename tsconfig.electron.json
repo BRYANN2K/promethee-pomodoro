@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "sourceMap": true,
+    "rootDir": "src/electron",
+    "outDir": "dist/electron",
+    "lib": ["ES2022", "DOM"],
+    "types": ["node", "electron"]
+  },
+  "references": [{ "path": "./tsconfig.core.json" }],
+  "include": ["src/electron/**/*.ts", "src/electron/**/*.cts"]
+}

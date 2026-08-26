@@ -1,0 +1,450 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate-source:
+    name: Validate tagged source
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22.14.0"
+          cache: npm
+
+      - name: Validate stable version tag
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Expected a stable semantic-version tag such as v1.0.0."
+            exit 1
+          fi
+          PACKAGE_VERSION="$(node -p 'require("./package.json").version')"
+          if [[ "$RELEASE_TAG" != "v$PACKAGE_VERSION" ]]; then
+            echo "Tag $RELEASE_TAG does not match package version $PACKAGE_VERSION."
+            exit 1
+          fi
+
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Validate application source
+        run: |
+          npm run target:build:app
+          npm test
+
+  build-native:
+    name: Build native ${{ matrix.target }}
+    needs: validate-source
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            target: darwin-arm64
+          - runner: macos-15-intel
+            target: darwin-x64
+          - runner: windows-2025
+            target: win32-x64
+
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22.14.0"
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build macOS helper
+        if: runner.os == 'macOS'
+        run: npm run target:build:native
+
+      - name: Build Windows helper
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $installationPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $installationPath) { throw "Visual Studio C++ build tools are unavailable." }
+          Import-Module "$installationPath\Common7\Tools\Microsoft.VisualStudio.DevShell.dll"
+          Enter-VsDevShell -VsInstallPath $installationPath -SkipAutomaticLocation -DevCmdArguments '-arch=x64 -host_arch=x64'
+          npm run target:build:native
+
+      - name: Verify helper target
+        shell: bash
+        env:
+          RELEASE_TARGET: ${{ matrix.target }}
+        run: |
+          test -d "dist/native/${RELEASE_TARGET}"
+          test "$(node -p 'process.platform + "-" + process.arch')" = "${RELEASE_TARGET}"
+
+      - name: Exercise macOS helper safely
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          RELEASE_TARGET: ${{ matrix.target }}
+        run: test "$("dist/native/${RELEASE_TARGET}/promethee-input-bridge" self-test)" = "ready,1,pause-resume"
+
+      - name: Exercise Windows helper safely
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          RELEASE_TARGET: ${{ matrix.target }}
+        run: |
+          $helper = "dist/native/$env:RELEASE_TARGET/promethee-input-bridge.exe"
+          $output = & $helper self-test 2>&1
+          if ($LASTEXITCODE -ne 0 -or "$output".Trim() -ne 'ready,1,observe-only') {
+            throw "Windows native helper self-test failed."
+          }
+
+      - name: Archive native helper
+        shell: bash
+        env:
+          RELEASE_TARGET: ${{ matrix.target }}
+        run: |
+          mkdir -p .release
+          tar -czf ".release/native-${RELEASE_TARGET}.tgz" -C dist/native "${RELEASE_TARGET}"
+
+      - name: Upload native helper
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: native-${{ matrix.target }}
+          path: .release/native-${{ matrix.target }}.tgz
+          if-no-files-found: error
+          retention-days: 1
+
+  assemble-package:
+    name: Assemble immutable npm package
+    needs: build-native
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22.14.0"
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Download native helpers
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: native-*
+          path: .release/native
+          merge-multiple: true
+
+      - name: Assemble production tree
+        shell: bash
+        run: |
+          mkdir -p dist/native .release/out
+          for archive in .release/native/native-*.tgz; do
+            tar -xzf "$archive" -C dist/native
+          done
+          chmod 755 dist/native/darwin-*/promethee-input-bridge
+          npm run target:build:app
+          npm test
+          npm run target:verify-release
+
+      - name: Pack exact registry artifact
+        shell: bash
+        run: |
+          npm pack --ignore-scripts --pack-destination .release/out
+          cd .release/out
+          sha256sum promethee-pomodoro-*.tgz > SHA256SUMS
+
+      - name: Upload release package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: npm-release-package
+          path: |
+            .release/out/promethee-pomodoro-*.tgz
+            .release/out/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 7
+
+  smoke-package:
+    name: Smoke npm install ${{ matrix.target }}
+    needs: assemble-package
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            target: darwin-arm64
+          - runner: macos-15-intel
+            target: darwin-x64
+          - runner: windows-2025
+            target: win32-x64
+
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22.14.0"
+
+      - name: Download exact release package
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: npm-release-package
+          path: .release
+
+      - name: Verify package checksum
+        shell: bash
+        run: |
+          node --input-type=module -e '
+            import { createHash } from "node:crypto";
+            import { readFileSync, readdirSync } from "node:fs";
+            import path from "node:path";
+            const packages = readdirSync(".release").filter((name) => /^promethee-pomodoro-.*\.tgz$/.test(name));
+            if (packages.length !== 1) throw new Error(`Expected one package, found ${packages.length}`);
+            const [expected, recordedName] = readFileSync(".release/SHA256SUMS", "utf8").trim().split(/\s+/);
+            if (recordedName !== packages[0]) throw new Error("Checksum manifest names a different package");
+            const actual = createHash("sha256").update(readFileSync(path.join(".release", packages[0]))).digest("hex");
+            if (actual !== expected) throw new Error("Package checksum mismatch");
+          '
+
+      - name: Install and inspect macOS package
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ github.ref_name }}
+          RELEASE_TARGET: ${{ matrix.target }}
+        run: |
+          EXPECTED_VERSION="${RELEASE_VERSION#v}"
+          PREFIX="$RUNNER_TEMP/promethee-pomodoro-npm"
+          npm install --global --prefix "$PREFIX" .release/promethee-pomodoro-*.tgz --no-audit --no-fund
+          "$PREFIX/bin/promethee-pomodoro" --version
+          APP_ROOT="$PREFIX/lib/node_modules/promethee-pomodoro"
+          node --check "$APP_ROOT/dist/electron/main.js"
+          node --check "$APP_ROOT/dist/electron/menu.js"
+          node --check "$APP_ROOT/dist/electron/overlay.js"
+          node --check "$APP_ROOT/dist/electron/handle.js"
+          HELPER="$PREFIX/lib/node_modules/promethee-pomodoro/dist/native/${RELEASE_TARGET}/promethee-input-bridge"
+          test -x "$HELPER"
+          test "$("$HELPER" self-test)" = "ready,1,pause-resume"
+          INSTALL_ROOT="$RUNNER_TEMP/promethee-pomodoro-applications"
+          PROMETHEE_POMODORO_INSTALL_DIR="$INSTALL_ROOT" "$PREFIX/bin/promethee-pomodoro" --install-only
+          APP="$INSTALL_ROOT/Promethee Pomodoro.app"
+          PLIST="$APP/Contents/Info.plist"
+          APP_EXECUTABLE="$APP/Contents/MacOS/Promethee Pomodoro"
+          test -x "$APP_EXECUTABLE"
+          test "$(/usr/bin/plutil -extract CFBundleIdentifier raw -o - "$PLIST")" = "io.github.bryann2k.promethee-pomodoro"
+          test "$(/usr/bin/plutil -extract CFBundleExecutable raw -o - "$PLIST")" = "Promethee Pomodoro"
+          test "$(/usr/bin/plutil -extract CFBundleShortVersionString raw -o - "$PLIST")" = "$EXPECTED_VERSION"
+          test "$(/usr/bin/plutil -extract LSUIElement raw -o - "$PLIST")" = "true"
+          /usr/bin/codesign --verify --deep --strict "$APP"
+          SMOKE_OUTPUT="$(env PROMETHEE_POMODORO_DISABLE_AUTOMATION=1 PROMETHEE_POMODORO_SMOKE_TEST=1 "$APP_EXECUTABLE")"
+          test "$SMOKE_OUTPUT" = "promethee-pomodoro-smoke-ready,${EXPECTED_VERSION},${RELEASE_TARGET}"
+
+      - name: Install and inspect Windows package
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ github.ref_name }}
+          RELEASE_TARGET: ${{ matrix.target }}
+        run: |
+          $expectedVersion = $env:RELEASE_VERSION -replace '^v', ''
+          $prefix = Join-Path $env:RUNNER_TEMP 'promethee-pomodoro-npm'
+          $package = Get-ChildItem .release/promethee-pomodoro-*.tgz | Select-Object -First 1
+          npm install --global --prefix $prefix $package.FullName --no-audit --no-fund
+          & (Join-Path $prefix 'promethee-pomodoro.cmd') --version
+          $appRoot = Join-Path $prefix 'node_modules\promethee-pomodoro'
+          node --check (Join-Path $appRoot 'dist\electron\main.js')
+          node --check (Join-Path $appRoot 'dist\electron\menu.js')
+          node --check (Join-Path $appRoot 'dist\electron\overlay.js')
+          node --check (Join-Path $appRoot 'dist\electron\handle.js')
+          $helper = Join-Path $prefix "node_modules\promethee-pomodoro\dist\native\$env:RELEASE_TARGET\promethee-input-bridge.exe"
+          if (-not (Test-Path $helper -PathType Leaf)) { throw "Windows native helper is missing." }
+          $output = & $helper self-test 2>&1
+          if ($LASTEXITCODE -ne 0 -or "$output".Trim() -ne 'ready,1,observe-only') {
+            throw "Windows native helper self-test failed."
+          }
+          $smokeOutput = & (Join-Path $prefix 'promethee-pomodoro.cmd') --smoke-test
+          if ($LASTEXITCODE -ne 0 -or "$smokeOutput".Trim() -ne "promethee-pomodoro-smoke-ready,$expectedVersion,$env:RELEASE_TARGET") {
+            throw "Windows Electron smoke test failed."
+          }
+
+  publish-github-release:
+    name: Publish GitHub Release
+    needs: publish-npm
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download exact release package
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: npm-release-package
+          path: .release
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" .release/* --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$RELEASE_TAG" .release/* --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes --title "$RELEASE_TAG"
+          fi
+          VERIFY_DIR="$(mktemp -d)"
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern 'promethee-pomodoro-*.tgz' --pattern SHA256SUMS --dir "$VERIFY_DIR"
+          cmp .release/SHA256SUMS "$VERIFY_DIR/SHA256SUMS"
+          PACKAGE_NAME="$(basename "$(find .release -maxdepth 1 -name 'promethee-pomodoro-*.tgz' -print -quit)")"
+          test -n "$PACKAGE_NAME"
+          cmp ".release/$PACKAGE_NAME" "$VERIFY_DIR/$PACKAGE_NAME"
+
+  publish-npm:
+    name: Publish npm package
+    needs: smoke-package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: npm-release
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Set up Node.js for trusted publishing
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24.19.0"
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Install exact trusted-publishing npm
+        shell: bash
+        run: npm install --global npm@11.17.0 --ignore-scripts --no-audit --no-fund
+
+      - name: Require exact publishing toolchain
+        shell: bash
+        run: |
+          test "$(node --version)" = "v24.19.0"
+          test "$(npm --version)" = "11.17.0"
+
+      - name: Download exact release package
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: npm-release-package
+          path: .release
+
+      - name: Compare npm registry integrity
+        id: registry
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ github.ref_name }}
+        run: |
+          PACKAGE_FILE="$(find .release -maxdepth 1 -name 'promethee-pomodoro-*.tgz' -print -quit)"
+          test -n "$PACKAGE_FILE"
+          export PACKAGE_FILE RELEASE_VERSION="${RELEASE_VERSION#v}"
+          node --input-type=module <<'NODE'
+          import { createHash } from "node:crypto";
+          import { appendFile, readFile } from "node:fs/promises";
+
+          const packageName = "promethee-pomodoro";
+          const packageFile = process.env.PACKAGE_FILE;
+          const version = process.env.RELEASE_VERSION;
+          const outputFile = process.env.GITHUB_OUTPUT;
+          if (!packageFile || !/^\d+\.\d+\.\d+$/.test(version ?? "") || !outputFile) {
+            throw new Error("Invalid registry-integrity inputs.");
+          }
+          const localIntegrity = `sha512-${createHash("sha512").update(await readFile(packageFile)).digest("base64")}`;
+          const response = await fetch(`https://registry.npmjs.org/${packageName}/${version}`, { redirect: "error" });
+          if (response.status === 404) {
+            await appendFile(outputFile, `registry_status=missing\nlocal_integrity=${localIntegrity}\n`);
+            process.exit(0);
+          }
+          if (!response.ok) throw new Error(`npm registry preflight failed with HTTP ${response.status}.`);
+          const metadata = await response.json();
+          const remoteIntegrity = metadata?.dist?.integrity;
+          if (remoteIntegrity !== localIntegrity) {
+            throw new Error(`${packageName}@${version} already exists with a different dist.integrity.`);
+          }
+          await appendFile(outputFile, `registry_status=matching\nlocal_integrity=${localIntegrity}\n`);
+          NODE
+
+      - name: Publish with npm Trusted Publishing
+        if: steps.registry.outputs.registry_status == 'missing'
+        shell: bash
+        run: |
+          PACKAGE_FILE="$(find .release -maxdepth 1 -name 'promethee-pomodoro-*.tgz' -print -quit)"
+          test -n "$PACKAGE_FILE"
+          npm publish "$PACKAGE_FILE" --ignore-scripts --access public
+
+      - name: Verify published npm integrity
+        shell: bash
+        env:
+          EXPECTED_INTEGRITY: ${{ steps.registry.outputs.local_integrity }}
+          RELEASE_VERSION: ${{ github.ref_name }}
+        run: |
+          export RELEASE_VERSION="${RELEASE_VERSION#v}"
+          node --input-type=module <<'NODE'
+          import { setTimeout as wait } from "node:timers/promises";
+
+          const packageName = "promethee-pomodoro";
+          const expectedIntegrity = process.env.EXPECTED_INTEGRITY;
+          const version = process.env.RELEASE_VERSION;
+          if (!expectedIntegrity || !/^sha512-[A-Za-z0-9+/]+={0,2}$/.test(expectedIntegrity) || !/^\d+\.\d+\.\d+$/.test(version ?? "")) {
+            throw new Error("Invalid registry-readback inputs.");
+          }
+          for (let attempt = 1; attempt <= 6; attempt += 1) {
+            const response = await fetch(`https://registry.npmjs.org/${packageName}/${version}`, { redirect: "error" });
+            if (response.ok) {
+              const metadata = await response.json();
+              if (metadata?.dist?.integrity !== expectedIntegrity) {
+                throw new Error(`${packageName}@${version} registry integrity does not match the reviewed tarball.`);
+              }
+              const tagsResponse = await fetch(`https://registry.npmjs.org/-/package/${packageName}/dist-tags`, { redirect: "error" });
+              if (tagsResponse.ok) {
+                const tags = await tagsResponse.json();
+                if (tags?.latest === version) {
+                  process.stdout.write(`Verified ${packageName}@${version} registry integrity and latest dist-tag.\n`);
+                  process.exit(0);
+                }
+              } else if (tagsResponse.status !== 404 && tagsResponse.status < 500) {
+                throw new Error(`npm dist-tag readback failed with HTTP ${tagsResponse.status}.`);
+              }
+            }
+            else if (response.status !== 404 && response.status < 500) {
+              throw new Error(`npm registry readback failed with HTTP ${response.status}.`);
+            }
+            if (attempt < 6) await wait(2_000);
+          }
+          throw new Error(`${packageName}@${version} did not expose the reviewed integrity and latest dist-tag within the bounded retry window.`);
+          NODE

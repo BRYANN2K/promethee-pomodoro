@@ -1,0 +1,23 @@
+# software-project-bootstrap:begin
+# Local credentials and machine-specific state; review this managed block before changing it.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+.DS_Store
+# software-project-bootstrap:end
+
+# Disposable Electron target outputs
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Local agent/planning workspaces; never ship or commit these trees.
+.agents/
+.codex/
+.design-flow/
+openspec/
+AGENTS.md

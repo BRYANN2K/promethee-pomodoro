@@ -1,0 +1,23 @@
+* { box-sizing: border-box; }
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: transparent; }
+body { display: grid; place-items: center; }
+.runtime-handle {
+  display: grid;
+  width: var(--size-trigger);
+  height: var(--size-trigger);
+  padding: 0;
+  place-items: center;
+  border: var(--border-default) solid var(--color-border-default);
+  border-radius: var(--radius-chip);
+  background: var(--color-surface-panel);
+  color: var(--color-phase-focus);
+  cursor: pointer;
+  transition: background var(--duration-feedback) var(--ease-feedback), color var(--duration-feedback) var(--ease-feedback);
+}
+.runtime-handle:hover { background: var(--color-surface-control-hover); color: var(--color-text-strong); }
+.runtime-handle[aria-expanded="true"] { border-color: var(--color-brand-accent-muted); background: var(--color-brand-accent-soft); color: var(--color-phase-focus); }
+.runtime-handle:focus { outline: none; }
+.runtime-handle:focus:not(:focus-visible) { box-shadow: none; }
+.runtime-handle:focus-visible { border-color: var(--color-focus-ring); box-shadow: inset 0 0 0 var(--border-default) var(--color-focus-ring); }
+.runtime-handle svg { fill: none; stroke: currentcolor; stroke-linecap: round; stroke-linejoin: round; stroke-width: var(--border-outline-progress); }
+@media (prefers-reduced-motion: reduce) { .runtime-handle { transition: none; } }

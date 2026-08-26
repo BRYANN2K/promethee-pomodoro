@@ -1,0 +1,108 @@
+{
+  "name": "promethee-pomodoro",
+  "version": "1.0.0",
+  "description": "An open-source Electron Pomodoro companion attached to the Promethee timer.",
+  "license": "MIT",
+  "productName": "Promethee Pomodoro",
+  "main": "dist/electron/main.js",
+  "type": "module",
+  "packageManager": "npm@10.9.2",
+  "bin": {
+    "promethee-pomodoro": "bin/promethee-pomodoro.cjs"
+  },
+  "files": [
+    "assets/PrometheePomodoro.icns",
+    "assets/app-icon.svg",
+    "assets/promethee-pomodoro-menu.png",
+    "package-command.cjs",
+    "bin/cli-options.cjs",
+    "bin/macos-app.cjs",
+    "bin/promethee-pomodoro.cjs",
+    "dist/core/*.js",
+    "dist/electron/handle.css",
+    "dist/electron/handle.html",
+    "dist/electron/handle.js",
+    "dist/electron/geometry-poll-cadence.js",
+    "dist/electron/macos-hud-capture.js",
+    "dist/electron/native-promethee-bridge.js",
+    "dist/electron/promethee-control.js",
+    "dist/electron/main.js",
+    "dist/electron/menu.css",
+    "dist/electron/menu.html",
+    "dist/electron/menu.js",
+    "dist/electron/overlay.css",
+    "dist/electron/overlay.html",
+    "dist/electron/overlay.js",
+    "dist/electron/promethee-sqlite.js",
+    "dist/electron/promethee-window-locator.js",
+    "dist/electron/release-update.js",
+    "dist/electron/runtime-controller.js",
+    "dist/electron/runtime-preload.cjs",
+    "dist/electron/runtime-store.js",
+    "dist/electron/runtime-window-plan.js",
+    "dist/electron/styles/tokens.css",
+    "dist/electron/task-time-store.js",
+    "dist/electron/task-time-tracker.js",
+    "dist/electron/window-plan.js",
+    "dist/native/darwin-arm64/promethee-input-bridge",
+    "dist/native/darwin-x64/promethee-input-bridge",
+    "dist/native/win32-x64/promethee-input-bridge.exe",
+    "LICENSE",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BRYANN2K/promethee-pomodoro.git"
+  },
+  "bugs": {
+    "url": "https://github.com/BRYANN2K/promethee-pomodoro/issues"
+  },
+  "homepage": "https://github.com/BRYANN2K/promethee-pomodoro#readme",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "electron",
+    "pomodoro",
+    "promethee",
+    "productivity"
+  ],
+  "prometheePomodoroFoundation": {
+    "status": "v1-cross-platform-companion",
+    "integration": "external-read-only-observation-and-platform-gated-os-automation",
+    "livePrometheeIntegration": true,
+    "releaseTargets": [
+      "darwin-arm64",
+      "darwin-x64",
+      "win32-x64"
+    ]
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "build": "node package-command.cjs build",
+    "start": "node package-command.cjs start",
+    "test": "node package-command.cjs test",
+    "prepublishOnly": "node package-command.cjs prepublish",
+    "target:build": "node package-command.cjs target:build",
+    "target:build:app": "node package-command.cjs target:build:app",
+    "target:build:native": "node package-command.cjs target:build:native",
+    "target:copy-resources": "node package-command.cjs target:copy-resources",
+    "target:typecheck": "node package-command.cjs target:typecheck",
+    "target:test:core": "node package-command.cjs target:test:core",
+    "target:test:electron": "node package-command.cjs target:test:electron",
+    "target:test:integration": "node package-command.cjs target:test:integration",
+    "target:test:persistence": "node package-command.cjs target:test:persistence",
+    "target:verify-release": "node package-command.cjs target:verify-release",
+    "target:start": "node package-command.cjs target:start"
+  },
+  "dependencies": {
+    "electron": "43.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.1",
+    "typescript": "7.0.2"
+  }
+}

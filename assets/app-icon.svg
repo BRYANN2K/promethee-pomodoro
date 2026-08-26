@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title description">
+  <title id="title">Promethee Pomodoro</title>
+  <desc id="description">A warm consuming perimeter surrounding a minimal sprout.</desc>
+  <rect x="80" y="80" width="864" height="864" rx="224" fill="#272727"/>
+  <rect x="120" y="120" width="784" height="784" rx="188" fill="#303030" stroke="#4B4B4B" stroke-width="20"/>
+  <path d="M512 148H716C804 148 876 220 876 308V716C876 804 804 876 716 876H308C220 876 148 804 148 716V308C148 220 220 148 308 148H390" fill="none" stroke="#DF643B" stroke-width="44" stroke-linecap="round"/>
+  <path d="M512 674V494" fill="none" stroke="#F5F5F5" stroke-width="44" stroke-linecap="round"/>
+  <path d="M512 518C508 402 574 330 700 314C696 430 632 506 512 518Z" fill="none" stroke="#DF643B" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M512 568C494 470 422 424 320 438C334 538 402 588 512 568Z" fill="none" stroke="#B2B2B2" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-source:
+    name: Validate source
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22.14.0"
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Type-check application source
+        run: npm run target:typecheck
+
+      - name: Run synthetic test suites
+        run: npm test
+
+  build-native:
+    name: Build native ${{ matrix.target }}
+    needs: validate-source
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            target: darwin-arm64
+          - runner: macos-15-intel
+            target: darwin-x64
+          - runner: windows-2025
+            target: win32-x64
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22.14.0"
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build macOS helper
+        if: runner.os == 'macOS'
+        run: npm run target:build:native
+
+      - name: Build Windows helper
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $installationPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $installationPath) { throw "Visual Studio C++ build tools are unavailable." }
+          Import-Module "$installationPath\Common7\Tools\Microsoft.VisualStudio.DevShell.dll"
+          Enter-VsDevShell -VsInstallPath $installationPath -SkipAutomaticLocation -DevCmdArguments '-arch=x64 -host_arch=x64'
+          npm run target:build:native
+
+      - name: Verify helper target
+        shell: bash
+        env:
+          RELEASE_TARGET: ${{ matrix.target }}
+        run: |
+          test -d "dist/native/${RELEASE_TARGET}"
+          test "$(node -p 'process.platform + "-" + process.arch')" = "${RELEASE_TARGET}"
+
+      - name: Exercise macOS helper safely
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          RELEASE_TARGET: ${{ matrix.target }}
+        run: test "$("dist/native/${RELEASE_TARGET}/promethee-input-bridge" self-test)" = "ready,1,pause-resume"
+
+      - name: Exercise Windows helper safely
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          RELEASE_TARGET: ${{ matrix.target }}
+        run: |
+          $helper = "dist/native/$env:RELEASE_TARGET/promethee-input-bridge.exe"
+          $output = & $helper self-test 2>&1
+          if ($LASTEXITCODE -ne 0 -or "$output".Trim() -ne 'ready,1,observe-only') {
+            throw "Windows native helper self-test failed."
+          }
