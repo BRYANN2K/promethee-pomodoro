@@ -46,7 +46,8 @@ cd "${SCRIPT_DIR}"
 echo "→ Installing locked npm dependencies…"
 npm ci --ignore-scripts --no-audit --no-fund
 
-echo "→ Downloading the pinned Electron 43.4.1 runtime…"
+ELECTRON_VERSION="$(node -p 'require("./package.json").dependencies.electron')"
+echo "→ Downloading the pinned Electron ${ELECTRON_VERSION} runtime…"
 node "${SCRIPT_DIR}/node_modules/electron/install.js"
 
 echo "→ Building Promethee Pomodoro V1…"

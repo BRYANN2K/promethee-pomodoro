@@ -9,7 +9,7 @@ informed: []
 
 # ADR-0008: Use npm for the first public beta
 
-> **V1 channel amendment (2026-08-26):** [ADR-0017](0017-use-public-npm-as-the-v1-release-channel.md) activates and narrows this decision to the exact public unscoped `promethee-pomodoro@1.0.0` package, three candidate helper targets, a stable `latest` approval gate, and the configured OIDC workflow. No publication or workflow run is proven. [ADR-0015](0015-use-github-releases-and-a-source-installer-for-v1.md) retains only a secondary macOS source path. The historical provider assumptions and staged-beta design below are preserved and do not override ADR-0017.
+> **V1 channel amendment (2026-08-26):** [ADR-0017](0017-use-public-npm-as-the-v1-release-channel.md) activates and narrows this decision to the public unscoped `promethee-pomodoro@1.0.1` package, three candidate helper targets, a stable `latest` approval gate, and the configured OIDC workflow. The preserved `v1.0.0` workflow failed before publication. [ADR-0015](0015-use-github-releases-and-a-source-installer-for-v1.md) retains only a secondary macOS source path. The historical provider assumptions and staged-beta design below are preserved and do not override ADR-0017.
 
 ## Context and problem
 

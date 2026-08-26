@@ -9,7 +9,7 @@ informed: []
 
 # ADR-0015: Use GitHub Releases and a source installer for V1
 
-> **Primary-channel supersession (2026-08-26):** [ADR-0017](0017-use-public-npm-as-the-v1-release-channel.md) replaces this record's private-package/GitHub-first V1 channel with the public unscoped `promethee-pomodoro@1.0.0` npm package. `install-electron.sh` remains a secondary macOS source path and the bounded manual GitHub Release check remains active. No package, tag, or Release is published. The decision history below is intentionally unchanged.
+> **Primary-channel supersession (2026-08-26):** [ADR-0017](0017-use-public-npm-as-the-v1-release-channel.md) replaces this record's private-package/GitHub-first V1 channel with the public unscoped `promethee-pomodoro@1.0.1` npm package. `install-electron.sh` remains a secondary macOS source path and the bounded manual GitHub Release check remains active. The failed `v1.0.0` tag is preserved; no package or GitHub Release was published. The decision history below is intentionally unchanged.
 
 ## Context and problem
 
@@ -37,7 +37,7 @@ V1 will use **GitHub Releases plus the checked-in `install-electron.sh` source i
 The macOS source installer:
 
 1. runs only on Darwin and requires Node.js 22.12 or newer plus npm;
-2. runs `npm ci --ignore-scripts --no-audit --no-fund` against the checked-in lockfile, then explicitly runs only pinned `electron@43.4.1`'s `install.js` to download that runtime before `npm run target:build`;
+2. runs `npm ci --ignore-scripts --no-audit --no-fund` against the checked-in lockfile, then explicitly runs only pinned `electron@43.2.0`'s `install.js` to download that runtime before `npm run target:build`;
 3. assembles the installed application from the locked Electron runtime and an explicit allowlist of production JavaScript/resources plus package/license metadata, excluding the local preview/demo and build metadata;
 4. applies a local ad hoc signature, which is not Apple Developer ID signing or notarization;
 5. installs to `${PROMETHEE_POMODORO_INSTALL_DIR}` or `~/Applications` by default; and

@@ -9,7 +9,7 @@ import test from "node:test";
 const repositoryRoot = path.resolve(import.meta.dirname, "../..");
 const cliPath = path.join(repositoryRoot, "bin", "promethee-pomodoro.cjs");
 const require = createRequire(import.meta.url);
-const { parseCliOptions, resolveLaunchMode, smokeTestEnvironment } = require(path.join(repositoryRoot, "bin", "cli-options.cjs"));
+const { macInstallRoot, parseCliOptions, resolveLaunchMode, smokeTestEnvironment } = require(path.join(repositoryRoot, "bin", "cli-options.cjs"));
 const {
   ACCESSIBILITY_USAGE_DESCRIPTION,
   APP_BUNDLE_ID,
@@ -94,6 +94,13 @@ test("smoke-test bypasses macOS installation and forces safe inherited execution
   });
 });
 
+test("the macOS installer honors an explicit isolated application directory", () => {
+  assert.equal(macInstallRoot({ PROMETHEE_POMODORO_INSTALL_DIR: "/tmp/release-apps" }), "/tmp/release-apps");
+  assert.equal(macInstallRoot({ PROMETHEE_POMODORO_INSTALL_DIR: "   " }), undefined);
+  assert.equal(macInstallRoot({}), undefined);
+  assert.match(readFileSync(cliPath, "utf8"), /installRoot: macInstallRoot\(process\.env\)/);
+});
+
 test("macOS npm installation assembles, reuses, and safely replaces the branded app", () => {
   const fixtureRoot = mkdtempSync(path.join(os.tmpdir(), "promethee-pomodoro-macos-package-"));
   const appRoot = path.join(fixtureRoot, "package");
@@ -102,6 +109,7 @@ test("macOS npm installation assembles, reuses, and safely replaces the branded 
   const calls: Array<{ command: string; args: string[] }> = [];
   const packageManifest = JSON.parse(readFileSync(path.join(repositoryRoot, "package.json"), "utf8")) as {
     dependencies: { electron: string };
+    version: string;
   };
   const electronVersion = packageManifest.dependencies.electron;
   const plistValues: Record<string, string> = {
@@ -110,8 +118,8 @@ test("macOS npm installation assembles, reuses, and safely replaces the branded 
     CFBundleIconFile: "PrometheePomodoro.icns",
     CFBundleIdentifier: APP_BUNDLE_ID,
     CFBundleName: "Promethee Pomodoro",
-    CFBundleShortVersionString: "1.0.0",
-    CFBundleVersion: "1.0.0",
+    CFBundleShortVersionString: packageManifest.version,
+    CFBundleVersion: packageManifest.version,
     LSUIElement: "true",
     NSAccessibilityUsageDescription: ACCESSIBILITY_USAGE_DESCRIPTION
   };

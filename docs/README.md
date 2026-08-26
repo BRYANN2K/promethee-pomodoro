@@ -33,7 +33,7 @@ This index separates the active Electron/TypeScript/npm contract, verified synth
 - [Promethee implementation guide](development/promethee-implementation-guide.md) — how Promethee engineers map and implement the first-party bridge without inventing source paths.
 - [Validation strategy](development/validation-strategy.md) — evidence required at each boundary.
 - [V1 npm distribution and updates](releases/distribution-and-updates.md) — install/run/uninstall, local macOS Electron application, task-history data, permissions, unsigned package model, update/rollback behavior, CI gates, and troubleshooting.
-- [V1.0.0 release-candidate notes](releases/v1.0.0.md) — current features, platform evidence, and known limitations.
+- [V1.0.1 release notes](releases/v1.0.1.md) — current candidate, release recovery, platform evidence, and known limitations.
 - [Changelog](../CHANGELOG.md) — release-visible changes and unpublished status.
 
 ## Documentation status labels

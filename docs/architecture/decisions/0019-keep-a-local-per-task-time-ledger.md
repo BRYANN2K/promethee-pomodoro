@@ -101,7 +101,7 @@ Users may delete individual local history entries. The application also offers a
 
 ## Validation
 
-The current-source Electron suite passes 132/132 tests, covering tracker transitions, task replacement/disappearance behavior, recovery, deterministic count/byte bounds, strict store decoding and corrupt/future-file preservation, deletion/pagination, local-time/DST aggregates, CSV escaping/formula protection, renderer/main-process history operations, permission gating, adaptive HUD identity tracking, and the package command boundary. Typecheck and the local `darwin-arm64` native/application/resource build also pass against the Electron `43.4.1` lock. These checks use synthetic fixtures and temporary directories; they are not live Promethee, public-package, platform-install, Windows, signing, or publication evidence.
+The current-source Electron suite passes 133/133 tests, covering tracker transitions, task replacement/disappearance behavior, recovery, deterministic count/byte bounds, strict store decoding and corrupt/future-file preservation, deletion/pagination, local-time/DST aggregates, CSV escaping/formula protection, renderer/main-process history operations, permission gating, adaptive HUD identity tracking, and the package command boundary. Typecheck and the local `darwin-arm64` native/application/resource build also pass against the Electron `43.2.0` lock. These checks use synthetic fixtures and temporary directories; they are not live Promethee, public-package, platform-install, Windows, signing, or publication evidence.
 
 ## Revisit triggers
 

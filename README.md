@@ -45,10 +45,10 @@ History lives in Electron's per-user application-data directory as `task-time-v1
 
 ## Install
 
-Install the fixed V1 release with Node.js 22.12+ and npm:
+After public registry readback confirms the release, install V1 with Node.js 22.12+ and npm:
 
 ```bash
-npm install --global promethee-pomodoro@1.0.0 --no-audit --no-fund
+npm install --global promethee-pomodoro@1.0.1 --no-audit --no-fund
 promethee-pomodoro
 ```
 
@@ -106,7 +106,7 @@ The interface follows the primary operating-system language:
 | Windows x64 | Passive HUD attachment, tasks/session observation, local tracking/history/CSV, manual Pomodoro transitions | Candidate; automation unavailable and runtime proof pending |
 | Linux, Windows arm64, other targets | None | Unsupported |
 
-V1 is distributed as an npm runtime package rather than a signed native installer. There is no Apple Developer ID, notarization, or Windows Authenticode release. The release workflow builds the native helpers independently, assembles one immutable tarball, and smoke-launches that exact installed artifact on macOS arm64, macOS x64, and Windows x64 before publication.
+V1 will be distributed as an npm runtime package rather than a signed native installer. There is no Apple Developer ID, notarization, or Windows Authenticode release. The release workflow builds the native helpers independently, assembles one immutable tarball, and smoke-launches that exact installed artifact on macOS arm64, macOS x64, and Windows x64 before publication.
 
 ## Development and contributing
 

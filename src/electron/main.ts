@@ -1209,9 +1209,24 @@ function activateRuntime(): void {
 
 function runElectronSmokeTest(): void {
   let completionStarted = false;
+  const resultFile = process.env.PROMETHEE_POMODORO_SMOKE_RESULT_FILE?.trim();
   const finish = (exitCode: 0 | 1, message: string, stream: NodeJS.WriteStream): void => {
     if (completionStarted) return;
     completionStarted = true;
+    if (resultFile !== undefined && resultFile.length > 0) {
+      void writeFile(resultFile, `${message}\n`, { encoding: "utf8", mode: 0o600 }).then(
+        () => {
+          clearTimeout(timeout);
+          app.exit(exitCode);
+        },
+        () => {
+          clearTimeout(timeout);
+          process.stderr.write("promethee-pomodoro-smoke-error,result-write-failed\n");
+          app.exit(1);
+        }
+      );
+      return;
+    }
     stream.write(`${message}\n`, () => {
       clearTimeout(timeout);
       app.exit(exitCode);

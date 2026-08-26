@@ -27,4 +27,11 @@ function smokeTestEnvironment(environment) {
   };
 }
 
-module.exports = { parseCliOptions, resolveLaunchMode, smokeTestEnvironment };
+function macInstallRoot(environment) {
+  const configuredRoot = environment?.PROMETHEE_POMODORO_INSTALL_DIR;
+  if (typeof configuredRoot !== "string") return undefined;
+  const trimmedRoot = configuredRoot.trim();
+  return trimmedRoot.length > 0 ? trimmedRoot : undefined;
+}
+
+module.exports = { macInstallRoot, parseCliOptions, resolveLaunchMode, smokeTestEnvironment };

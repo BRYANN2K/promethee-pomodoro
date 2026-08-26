@@ -266,7 +266,11 @@ jobs:
           test "$(/usr/bin/plutil -extract CFBundleShortVersionString raw -o - "$PLIST")" = "$EXPECTED_VERSION"
           test "$(/usr/bin/plutil -extract LSUIElement raw -o - "$PLIST")" = "true"
           /usr/bin/codesign --verify --deep --strict "$APP"
-          SMOKE_OUTPUT="$(env PROMETHEE_POMODORO_DISABLE_AUTOMATION=1 PROMETHEE_POMODORO_SMOKE_TEST=1 "$APP_EXECUTABLE")"
+          SMOKE_RESULT="$RUNNER_TEMP/promethee-pomodoro-smoke-${RELEASE_TARGET}.txt"
+          rm -f "$SMOKE_RESULT"
+          env PROMETHEE_POMODORO_DISABLE_AUTOMATION=1 PROMETHEE_POMODORO_SMOKE_TEST=1 PROMETHEE_POMODORO_SMOKE_RESULT_FILE="$SMOKE_RESULT" "$APP_EXECUTABLE"
+          test -f "$SMOKE_RESULT"
+          SMOKE_OUTPUT="$(tr -d '\r\n' < "$SMOKE_RESULT")"
           test "$SMOKE_OUTPUT" = "promethee-pomodoro-smoke-ready,${EXPECTED_VERSION},${RELEASE_TARGET}"
 
       - name: Install and inspect Windows package
@@ -292,9 +296,18 @@ jobs:
           if ($LASTEXITCODE -ne 0 -or "$output".Trim() -ne 'ready,1,observe-only') {
             throw "Windows native helper self-test failed."
           }
-          $smokeOutput = & (Join-Path $prefix 'promethee-pomodoro.cmd') --smoke-test
-          if ($LASTEXITCODE -ne 0 -or "$smokeOutput".Trim() -ne "promethee-pomodoro-smoke-ready,$expectedVersion,$env:RELEASE_TARGET") {
+          $smokeResult = Join-Path $env:RUNNER_TEMP "promethee-pomodoro-smoke-$env:RELEASE_TARGET.txt"
+          Remove-Item $smokeResult -Force -ErrorAction SilentlyContinue
+          $env:PROMETHEE_POMODORO_SMOKE_RESULT_FILE = $smokeResult
+          & (Join-Path $prefix 'promethee-pomodoro.cmd') --smoke-test
+          $smokeExitCode = $LASTEXITCODE
+          Remove-Item Env:PROMETHEE_POMODORO_SMOKE_RESULT_FILE
+          if ($smokeExitCode -ne 0 -or -not (Test-Path $smokeResult -PathType Leaf)) {
             throw "Windows Electron smoke test failed."
+          }
+          $smokeOutput = (Get-Content $smokeResult -Raw).Trim()
+          if ($smokeOutput -ne "promethee-pomodoro-smoke-ready,$expectedVersion,$env:RELEASE_TARGET") {
+            throw "Windows Electron smoke marker was invalid: $smokeOutput"
           }
 
   publish-github-release:

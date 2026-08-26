@@ -10,11 +10,11 @@
     "Keep the real Promethee timer visible and interactive; local surfaces must not intercept its controls or transient Accept surface.",
     "Reset timer restarts only the current local Pomodoro phase at its configured duration and never controls or resets Promethee.",
     "Select French when the primary operating-system language begins with fr and English otherwise until an explicit preference is implemented.",
-    "Prepare the public unscoped promethee-pomodoro@1.0.0 npm package for macOS arm64, macOS x64, and passive Windows x64; stable latest publication requires exact manual approval and verified workflow/registry evidence.",
+    "Prepare the public unscoped promethee-pomodoro@1.0.1 npm package for macOS arm64, macOS x64, and passive Windows x64; stable latest publication requires exact manual approval and verified workflow/registry evidence.",
     "Treat install-electron.sh as a secondary macOS source path and defer native installers, Apple Developer ID/notarization, Windows Authenticode, and project-signed delivery.",
     "Treat the macOS installer's post-install Accessibility and ScreenCapture TCC reset for current and retired bundle identifiers as a temporary ad-hoc-cdhash workaround only; it never grants permissions, users must revalidate and regrant after every V1 rebuild or install, and future Apple Developer ID signing is the stable update-identity solution.",
     "The npm name was unclaimed at the 2026-08-26 E404 check; first publication requires separate approval for one short-lived granular-token/2FA bootstrap, registry readback, token revocation, and exact Trusted Publisher setup before later OIDC releases.",
-    "Electron is locked at the authorized 43.4.1; local source validation does not establish clean npm installation, running-runtime identity, or Windows support.",
+    "Electron is locked at the authorized 43.2.0; local source validation does not establish clean npm installation, running-runtime identity, or Windows support.",
     "Track time only for the selected task while the real Promethee session observation is running; task changes close the previous local interval.",
     "Persist ADR-0019 reporting data only in task-time-v1.json: bounded task/project snapshots and local interval timestamps are allowed, but Promethee session identifiers are never persisted, exposed to the renderer, or exported.",
     "Keep ADR-0019 history to the newest 10000 closed entries and an encoded snapshot strictly below 8 MiB, with deterministic oldest-first eviction; local deletion and CSV export never write to Promethee.",
@@ -68,10 +68,10 @@
         ],
         "tests": {
           "core": 33,
-          "electron": 132,
+          "electron": 133,
           "integration": 71,
           "persistence": 17,
-          "total": 253
+          "total": 254
         },
         "typecheck": true
       },
@@ -144,7 +144,7 @@
     "summary": "An Electron and TypeScript Pomodoro companion for Promethee on macOS and Windows."
   },
   "runtime": {
-    "electron": "43.4.1",
+    "electron": "43.2.0",
     "node": ">=22.12.0"
   },
   "release_candidate": {
@@ -157,7 +157,7 @@
       "darwin-x64",
       "win32-x64-passive"
     ],
-    "version": "1.0.0"
+    "version": "1.0.1"
   },
   "schema_version": "1.0",
   "source_roots": [

@@ -4,7 +4,7 @@
 
 const path = require("node:path");
 const { spawn } = require("node:child_process");
-const { parseCliOptions, resolveLaunchMode, smokeTestEnvironment } = require("./cli-options.cjs");
+const { macInstallRoot, parseCliOptions, resolveLaunchMode, smokeTestEnvironment } = require("./cli-options.cjs");
 
 const appRoot = path.resolve(__dirname, "..");
 const packageVersion = require(path.join(appRoot, "package.json")).version;
@@ -51,6 +51,7 @@ if (launchMode === "smoke-test") {
       appRoot,
       electronAppPath: path.resolve(electron, "../../.."),
       electronVersion,
+      installRoot: macInstallRoot(process.env),
       target
     });
   } catch (error) {

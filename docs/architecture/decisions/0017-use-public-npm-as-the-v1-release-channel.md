@@ -13,7 +13,7 @@ informed: []
 
 ADR-0015 selected a private npm-shaped project, GitHub Releases, and a macOS-only source installer for V1. That path does not provide one installation and execution model for both macOS and Windows. The project owner has now selected a public npm release candidate for both target operating systems while Apple Developer ID, notarization, Windows Authenticode, and native installers remain unavailable.
 
-The exact public package is the unscoped `promethee-pomodoro` package at version `1.0.0`. The current work prepares and reviews a local candidate and its pipeline. It does not authorize or perform npm publication, a Git tag, a GitHub Release, or any `latest` dist-tag mutation.
+The exact public package is the unscoped `promethee-pomodoro` package. The first publishable version is `1.0.1`: the immutable `v1.0.0` tag was preserved after its workflow exposed release-smoke defects before any npm or GitHub Release publication.
 
 At the 2026-08-26 release freeze, npm lookup returned `E404`; the name was still unclaimed. npm Trusted Publishing cannot create a new package, so the configured OIDC job applies only after a separately authorized bootstrap publication establishes the package.
 
@@ -39,11 +39,11 @@ This decision governs the V1 package name, registry channel, user entry point, a
 
 ## Decision
 
-V1 SHALL use the public, unscoped npm package `promethee-pomodoro`, version `1.0.0`, as its primary release channel. The npm tarball is a source/runtime package executed through its `promethee-pomodoro` binary mapping. It is not a native platform installer or a project-signed binary artifact.
+V1 SHALL use the public, unscoped npm package `promethee-pomodoro`, initially at version `1.0.1`, as its primary release channel. The npm tarball is a source/runtime package executed through its `promethee-pomodoro` binary mapping. It is not a native platform installer or a project-signed binary artifact.
 
 The package MAY be installed globally, executed through npm's one-off execution path, or installed from the exact reviewed local tarball during candidate verification. The CLI SHALL provide foreground execution for diagnostics and a version query. Removal SHALL use npm's package removal flow; it SHALL NOT silently delete Pomodoro preferences.
 
-The stable npm `latest` dist-tag MAY be created or changed only after explicit manual approval of the exact package name, version, source revision, candidate digest/integrity, publication identity, and registry target. If the name remains unclaimed, V1.0.0 requires one separately authorized bootstrap publication of the reviewed tarball by an authorized maintainer using a short-lived granular npm token and account 2FA. The token SHALL NOT enter repository files, GitHub Actions, shell history, logs, or documentation and SHALL be revoked after exact registry readback.
+The stable npm `latest` dist-tag MAY be created or changed only after explicit manual approval of the exact package name, version, source revision, candidate digest/integrity, publication identity, and registry target. If the name remains unclaimed, V1.0.1 requires one separately authorized bootstrap publication of the reviewed tarball by an authorized maintainer using a short-lived granular npm token and account 2FA. The token SHALL NOT enter repository files, GitHub Actions, shell history, logs, or documentation and SHALL be revoked after exact registry readback.
 
 After bootstrap, npm Trusted Publisher configuration SHALL name the exact public repository, `.github/workflows/release.yml`, and `npm-release` environment. Later publications use the job-scoped OIDC identity; traditional npm tokens are prohibited. The configured workflow is publication intent until those external settings exist, it runs successfully, and its registry result is read back. This task performs no publication.
 
@@ -83,19 +83,19 @@ npm fits the existing Electron/TypeScript package and supplies one early distrib
 
 ## Implementation and migration
 
-1. Make `package.json` and the lockfile describe the exact public package without changing version `1.0.0`.
+1. Make `package.json` and the lockfile describe the exact public package at version `1.0.1`.
 2. Include only reviewed production/runtime/native-build files in the tarball and exclude tests, private data, previews, and repository-only artifacts.
 3. Prove local tarball install, version, foreground launch, normal launch, update, rollback, and uninstall on clean macOS and Windows candidates.
 4. Review the exact tarball contents and integrity, source identity, release notes, known issues, and public documentation.
 5. If the package remains unclaimed, obtain exact approval and perform the one-time granular-token/2FA bootstrap; read it back and revoke the token.
 6. Configure the exact npm Trusted Publisher and protected `npm-release` environment for subsequent versions; prohibit traditional tokens in CI.
-7. Reconcile the stable workflow's npm-before-GitHub ordering so the V1 tag path cannot try to republish the bootstrapped `1.0.0`.
+7. Reconcile the stable workflow's npm-before-GitHub ordering so the V1 tag path cannot try to republish the bootstrapped `1.0.1`.
 8. Obtain explicit manual approval before any stable tag, GitHub Release, or later publication/`latest` mutation.
 9. Read back every public package/version/dist-tag/integrity/provenance and repeat clean install/run/uninstall checks before declaring availability.
 
 ## Validation
 
-- The package manifest, lockfile, tarball, CLI version, and source tag all agree on `promethee-pomodoro@1.0.0`.
+- The package manifest, lockfile, tarball, CLI version, and source tag all agree on `promethee-pomodoro@1.0.1`.
 - Candidate inspection contains only the documented runtime/build allowlist and no credential, live Promethee data, test fixture, preview, or repository-only file.
 - Clean macOS and Windows runs exercise install, detached launch, foreground launch, version, update to an explicit version, rollback, and uninstall.
 - New installations default automatic Pause on and automatic Resume off; existing stored preferences remain unchanged, Windows exposes no automation, and platform permissions are requested only for the documented capabilities.

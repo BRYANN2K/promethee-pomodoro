@@ -1,6 +1,6 @@
 {
   "name": "promethee-pomodoro",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "An open-source Electron Pomodoro companion attached to the Promethee timer.",
   "license": "MIT",
   "productName": "Promethee Pomodoro",
@@ -99,7 +99,7 @@
     "target:start": "node package-command.cjs target:start"
   },
   "dependencies": {
-    "electron": "43.4.1"
+    "electron": "43.2.0"
   },
   "devDependencies": {
     "@types/node": "22.20.1",

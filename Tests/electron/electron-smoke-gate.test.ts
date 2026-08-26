@@ -10,6 +10,8 @@ test("Electron smoke mode waits for readiness, emits one target marker, and exit
   assert.match(main, /const SMOKE_TEST_TIMEOUT_MS = 8_000/);
   assert.match(main, /const SMOKE_TEST_MARKER = "promethee-pomodoro-smoke-ready"/);
   assert.match(main, /void app\.whenReady\(\)\.then\(/);
+  assert.match(main, /PROMETHEE_POMODORO_SMOKE_RESULT_FILE/);
+  assert.match(main, /writeFile\(resultFile, `\$\{message\}\\n`/);
   assert.match(main, /`\$\{SMOKE_TEST_MARKER\},\$\{app\.getVersion\(\)\},\$\{process\.platform\}-\$\{process\.arch\}`/);
   assert.match(main, /if \(SMOKE_TEST\) \{\s*runElectronSmokeTest\(\);\s*\} else \{\s*const ownsInstanceLock/s);
 });
@@ -23,6 +25,8 @@ test("the exact installed tarball is smoke-launched through branded macOS bundle
   assert.match(releaseWorkflow, /plutil -extract CFBundleIdentifier raw/);
   assert.match(releaseWorkflow, /codesign --verify --deep --strict/);
   assert.match(releaseWorkflow, /"\$APP\/Contents\/MacOS\/Promethee Pomodoro"/);
+  assert.match(releaseWorkflow, /PROMETHEE_POMODORO_SMOKE_RESULT_FILE="\$SMOKE_RESULT"/);
+  assert.match(releaseWorkflow, /\$env:PROMETHEE_POMODORO_SMOKE_RESULT_FILE = \$smokeResult/);
   assert.match(releaseWorkflow, /promethee-pomodoro-smoke-ready,\$\{EXPECTED_VERSION\},\$\{RELEASE_TARGET\}/);
   assert.match(releaseWorkflow, /promethee-pomodoro-smoke-ready,\$expectedVersion,\$env:RELEASE_TARGET/);
 });

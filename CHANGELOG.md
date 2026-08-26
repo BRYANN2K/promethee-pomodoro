@@ -2,7 +2,18 @@
 
 All notable changes to Promethee Pomodoro are recorded here. A version remains **Unreleased** until its exact npm package and source revision are publicly available and verified.
 
-## [1.0.0] - 2026-08-26
+## [1.0.1] - 2026-08-26 (unpublished candidate)
+
+Initial public-release candidate, carrying the complete 1.0.0 product feature set plus release-gate corrections discovered by the first immutable workflow run.
+
+### Fixed
+
+- The npm macOS launcher now honors the isolated application directory used by clean-install verification.
+- Cross-platform Electron readiness smoke tests now use a bounded result file instead of depending on Windows GUI-process stdout capture.
+- The release dependency lock is restored to the explicitly authorized Electron `43.2.0`.
+- Release validation now covers 254 tests: 33 core, 71 integration, 17 persistence, and 133 Electron.
+
+## [1.0.0] - 2026-08-26 (unpublished candidate)
 
 ### Added
 
@@ -45,7 +56,7 @@ All notable changes to Promethee Pomodoro are recorded here. A version remains *
 - Promethee schema/layout compatibility outside the recorded evidence is fail-closed rather than guaranteed.
 - Cycle-snapshot lifecycle persistence and authoritative Promethee command acknowledgement are not available.
 - Local task-time history is bounded rather than archival, and exported CSV files are user-managed reporting artifacts rather than invoices or tamper-evident records.
-- Electron is pinned to the approved `43.4.1`; source validation covers the updated dependency lock but not a clean registry install or Windows runtime.
+- This unpublished candidate pinned Electron `43.4.1`; `1.0.1` restores the authorized `43.2.0` lock.
 - The current-app Screen Recording grant and automatic relaunch still require a user-run macOS validation.
 
 ### Verification evidence
