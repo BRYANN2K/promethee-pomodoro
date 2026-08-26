@@ -41,7 +41,8 @@ if (process.platform === "darwin") {
     "/nologo", "/std:c++20", "/EHsc", "/O2", "/W4", "/WX",
     path.join(repositoryRoot, "native", "windows", "promethee-input-bridge.cpp"),
     `/Fe:${path.join(outputDirectory, "promethee-input-bridge.exe")}`,
-    "dwmapi.lib"
+    "dwmapi.lib",
+    "user32.lib"
   ];
 }
 

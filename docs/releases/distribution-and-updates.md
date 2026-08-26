@@ -47,7 +47,7 @@ The packaged macOS helpers declare macOS 14.0 as their minimum. The release veri
 
 The configured workflows use Node.js `22.14.0` for build/smoke jobs and exact Node.js `24.19.0` plus npm `11.17.0` for Trusted Publishing. Those workflow versions do not raise the package's declared consumer minimum.
 
-Registry/tarball users receive prebuilt native helpers and do not need Xcode or Visual Studio merely to install the package. Building a helper from source requires Apple `clang` and the AppKit/ApplicationServices/Foundation frameworks on macOS, or Visual Studio C++ x64 build tools plus `dwmapi.lib` on Windows.
+Registry/tarball users receive prebuilt native helpers and do not need Xcode or Visual Studio merely to install the package. Building a helper from source requires Apple `clang` and the AppKit/ApplicationServices/Foundation frameworks on macOS, or Visual Studio C++ x64 build tools plus `dwmapi.lib` and `user32.lib` on Windows.
 
 ### macOS permissions
 

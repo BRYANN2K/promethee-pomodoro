@@ -9,6 +9,7 @@
 #include <vector>
 
 #pragma comment(lib, "dwmapi.lib")
+#pragma comment(lib, "user32.lib")
 
 namespace {
 constexpr wchar_t kPrometheeExecutable[] = L"Promethee.exe";
