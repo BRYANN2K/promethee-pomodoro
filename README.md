@@ -45,7 +45,7 @@ History lives in Electron's per-user application-data directory as `task-time-v1
 
 ## Install
 
-After public registry readback confirms the release, install V1 with Node.js 22.12+ and npm:
+Install V1 with Node.js 22.12+ and npm:
 
 ```bash
 npm install --global promethee-pomodoro@1.0.1 --no-audit --no-fund
@@ -101,12 +101,12 @@ The interface follows the primary operating-system language:
 
 | Platform | Current V1 behavior | Status |
 | --- | --- | --- |
-| macOS 14+ arm64 | Attached HUD/menu, local tracking/history/CSV, bounded Pause/Resume path | Local candidate; one narrow Promethee 1.3.29 flow recorded; locally ad hoc signed, not Apple Developer ID signed or notarized |
-| macOS 14+ x64 | Same intended feature set | Candidate; clean installation/runtime proof pending |
-| Windows x64 | Passive HUD attachment, tasks/session observation, local tracking/history/CSV, manual Pomodoro transitions | Candidate; automation unavailable and runtime proof pending |
+| macOS 14+ arm64 | Attached HUD/menu, local tracking/history/CSV, bounded Pause/Resume path | Exact release-tarball installation/Electron/helper smoke passed; one narrow Promethee 1.3.29 flow recorded; locally ad hoc signed, not Apple Developer ID signed or notarized |
+| macOS 14+ x64 | Same intended feature set | Exact release-tarball installation/Electron/helper smoke passed; live Promethee proof pending |
+| Windows x64 | Passive HUD attachment, tasks/session observation, local tracking/history/CSV, manual Pomodoro transitions | Exact release-tarball installation/Electron/helper smoke passed; automation unavailable and live Promethee proof pending |
 | Linux, Windows arm64, other targets | None | Unsupported |
 
-V1 will be distributed as an npm runtime package rather than a signed native installer. There is no Apple Developer ID, notarization, or Windows Authenticode release. The release workflow builds the native helpers independently, assembles one immutable tarball, and smoke-launches that exact installed artifact on macOS arm64, macOS x64, and Windows x64 before publication.
+V1 is distributed as an npm runtime package rather than a signed native installer. There is no Apple Developer ID, notarization, or Windows Authenticode release. The release workflow built the native helpers independently, assembled one immutable tarball, and smoke-launched that exact installed artifact on macOS arm64, macOS x64, and Windows x64 before publication.
 
 ## Development and contributing
 

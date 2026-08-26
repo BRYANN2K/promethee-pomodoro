@@ -8,7 +8,7 @@
 
 **Passive Windows runtime** — the Windows x64 V1 candidate can locate the Promethee HUD, read only allowlisted task/session observations, render attached local surfaces, and accept manual Pomodoro transitions. It cannot Pause or Resume Promethee automatically and fails closed when required evidence is unavailable.
 
-**Release candidate** — the prepared `promethee-pomodoro@1.0.1` package, helper targets, and configured workflows before verified npm/GitHub publication, registry readback, or platform support claim.
+**Release candidate** — a prepared package, helper set, and workflow awaiting verified npm/GitHub publication. The `promethee-pomodoro@1.0.1` candidate passed that gate and is now the first public release; publication does not by itself establish live Promethee support on every platform.
 
 **Read-only task source** — the accepted ADR-0012 main-process contract, with a host-wired synthetic-tested reader, for fixed, bounded queries of only Promethee `tasks` and `task_projects`; it grants no write, session, credential, or arbitrary database authority.
 

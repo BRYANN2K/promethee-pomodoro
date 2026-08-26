@@ -1,8 +1,8 @@
 # V1 npm distribution and updates
 
-**Status:** Corrected `promethee-pomodoro@1.0.1` release candidate and configured pipeline. The preserved `v1.0.0` workflow built all native helpers but failed clean-package smoke before publication; npm `latest` has not been created or changed.
+**Status:** `promethee-pomodoro@1.0.1` is public on npm and GitHub, with npm `latest` pointing to `1.0.1`. Release run `32966038040` passed the exact three-target package matrix and registry/release readback. The preserved `v1.0.0` workflow built all native helpers but failed clean-package smoke before publication.
 
-On 2026-08-26, registry lookup returned `E404` for the unscoped name: it was unclaimed at that observation. npm Trusted Publishing cannot create a package that does not yet exist. The checked-in OIDC job is therefore subsequent-publication configuration, not a working V1 bootstrap path. Claiming/publishing `1.0.1` requires the separately authorized one-time bootstrap described below.
+Earlier on 2026-08-26, registry lookup returned `E404` for the unscoped name. The separately approved one-time bootstrap then published the exact workflow artifact with account 2FA; registry readback matched it, `latest` resolved to `1.0.1`, and the local bootstrap session was revoked. Later publications use the checked-in OIDC job and exact Trusted Publisher relationship described below.
 
 The dependency lock pins the explicitly approved Electron `43.2.0`. Current TypeScript/native source validation passes locally; this does not establish clean npm installation, a running packaged-runtime identity, or Windows runtime support.
 
@@ -12,12 +12,12 @@ This is the operational reference for users and release maintainers. [ADR-0017](
 
 | Target | Candidate artifact | Product behavior evidence | Current claim |
 | --- | --- | --- | --- |
-| macOS arm64 (macOS 14+) | Prebuilt `darwin-arm64` native helper in the npm tarball | Local helper architecture/minimum-OS verification and one Promethee 1.3.29 live flow passed; CI is configured | Candidate, not registry-verified or generally supported |
-| macOS x64 | Prebuilt `darwin-x64` native helper in the npm tarball | CI is configured; no recorded clean npm/runtime result | Candidate, unverified |
-| Windows x64 | Prebuilt `win32-x64` native helper in the npm tarball | CI and package smoke are configured; no recorded Promethee runtime result | Candidate, unverified; automatic Pause/Resume is unavailable |
+| macOS arm64 (macOS 14+) | Prebuilt `darwin-arm64` native helper in the npm tarball | Clean exact release-tarball installation plus Electron/helper smoke passed; one Promethee 1.3.29 live flow also passed | Public unsigned package; live evidence remains narrow |
+| macOS x64 | Prebuilt `darwin-x64` native helper in the npm tarball | Clean exact-package installation plus Electron/helper smoke passed | Public unsigned package; no recorded live Promethee result |
+| Windows x64 | Prebuilt `win32-x64` native helper in the npm tarball | Clean exact-package installation plus Electron/helper smoke passed | Public unsigned package; no recorded live Promethee result and automatic Pause/Resume is unavailable |
 | Windows arm64, Linux, other targets | None | None | Unsupported |
 
-The macOS evidence is one authorized Promethee 1.3.29 same-session focus → pause → short break → resume → focus exercise. It does not establish every macOS version, architecture, Promethee build, permission state, display topology, or install path. Configured CI is not execution evidence.
+The macOS live evidence is one authorized Promethee 1.3.29 same-session focus → pause → short break → resume → focus exercise. It does not establish every macOS version, architecture, Promethee build, permission state, display topology, or install path. The release matrix establishes exact package installation and Electron/helper readiness at the package boundary; it is not live Promethee product support evidence.
 
 ## What the npm artifact is
 
@@ -66,9 +66,9 @@ The current Windows x64 host can use the packaged observation-only helper for Pr
 
 Run Promethee and Promethee Pomodoro at the same integrity level. An elevated target can prevent a normal user process from observing or interacting with it. The project has no Authenticode certificate, installer publisher, or SmartScreen reputation.
 
-## Install from npm after publication
+## Install from npm
 
-The following commands are the intended public path only after registry readback proves `promethee-pomodoro@1.0.1` exists. They are not currently executable publication evidence.
+Registry readback proves that `promethee-pomodoro@1.0.1` exists and that npm `latest` points to it.
 
 Install the exact V1 version globally:
 
@@ -209,21 +209,21 @@ tag/source validation
 
 The workflow validates that the stable tag equals `package.json` version, uses pinned actions, and passes artifacts between jobs. The assembly job builds the application once around the three native helper artifacts, verifies the package allowlist, produces one tarball, and records its SHA-256. Smoke jobs consume that exact artifact.
 
-The npm job uses job-scoped `id-token: write`, no stored npm token, Node.js `24.19.0`, and npm `11.17.0`. It references the `npm-release` GitHub environment and publishes the exact downloaded tarball with public access. Repository YAML cannot prove that environment protection, npm Trusted Publisher ownership, provenance emission, or manual approval is configured externally. Because the package is still unclaimed, this job becomes the readback/idempotence gate only after the separately approved `1.0.1` bootstrap and exact Trusted Publisher configuration.
+The npm job uses job-scoped `id-token: write`, no stored npm token, Node.js `24.19.0`, and npm `11.17.0`. It references the protected `npm-release` GitHub environment and publishes the exact downloaded tarball with public access. For `1.0.1`, the one-time bootstrap claimed the previously unclaimed name; the resumed job then acted as a strict readback/idempotence gate, skipped duplicate publication only after exact integrity matched, verified `latest`, and allowed the GitHub Release.
 
 Because the package version is stable, its authorized first publish creates npm's `latest` tag. For V1, protect the `npm-release` environment before pushing the tag so the workflow builds and smokes the exact candidate, then pauses before its publication job.
 
-### One-time package bootstrap
+### Completed one-time package bootstrap
 
-If the name is still available and the project owner separately approves the exact registry mutation, an authorized maintainer downloads the single artifact produced by the paused tag workflow, verifies `SHA256SUMS`, and claims the name with the authenticated npm maintainer session and required account 2FA. Because direct local publication has no supported GitHub provenance context, the one-time bootstrap command must explicitly use `--provenance=false`; V1 must not claim npm provenance:
+On 2026-08-26, the project owner approved the exact registry mutation. The maintainer downloaded the single artifact from the paused tag workflow, verified it, and claimed the name with an authenticated npm maintainer session and account 2FA. Because direct local publication had no supported GitHub provenance context, the one-time bootstrap explicitly used `--provenance=false`; V1 does not claim npm provenance:
 
 ```bash
 npm publish ./promethee-pomodoro-1.0.1.tgz --ignore-scripts --access public --tag latest --provenance=false
 ```
 
-The approval must name the package/version, tarball digest, source revision, `latest` mutation, npm account, and command. Do not put an npm token in GitHub Actions, repository files, shell history, logs, or documentation. After registry readback, approve the paused environment job: it compares the exact tarball SHA-512 to npm `dist.integrity`, skips duplicate publication only on an exact match, verifies `latest`, and then permits the GitHub Release.
+The published artifact is source revision `06af679b4909a309e919c67e557c9c3c33787905`, SHA-256 `9ba4d339b16f3adcb0cd249890e615b57f99cbe45ed4c229bfad32367a5a51d9`, with npm integrity `sha512-+cSk8dhKNadxI8lBfOPmBlL3SCpbfvbRrWFAEDRZnjotvjpuzaOftlXFq24huc3yUJLj5elOJn5hPo+BDJ1tDA==`. No npm token was added to GitHub Actions or the repository. After registry readback, the protected job compared exact integrity, verified `latest`, and permitted the GitHub Release.
 
-Immediately after verified registry readback, revoke the bootstrap token and configure the npm Trusted Publisher to the exact public repository, `.github/workflows/release.yml`, and `npm-release` environment. Protect that environment with the required manual approver. All later publications use OIDC; traditional npm tokens are prohibited. This repository has not performed any of these external steps.
+The local bootstrap session was revoked after verified registry readback. The npm Trusted Publisher is bound to the exact public repository, `.github/workflows/release.yml`, and `npm-release` environment; that GitHub environment retains required manual approval. All later publications use OIDC; traditional npm tokens are prohibited.
 
 The stable workflow creates the GitHub Release only after exact npm integrity and `latest` readback succeed. A pre-existing version with different integrity fails closed.
 
@@ -231,32 +231,32 @@ The stable workflow creates the GitHub Release only after exact npm integrity an
 
 ### Before tag or publication
 
-- [ ] Public Git HEAD and repository URL are verified and immutable for the candidate.
-- [ ] `package.json`, lockfile, CLI `--version`, release notes, and intended tag all say `promethee-pomodoro@1.0.1` / `v1.0.1`.
-- [ ] The public unscoped npm name and maintainer/Trusted Publisher ownership are verified.
-- [ ] Because the name is currently unclaimed, the one-time exact bootstrap publication, short-lived granular token, account 2FA, tarball digest, command, and `latest` mutation receive separate approval.
-- [ ] Registry readback passes, the bootstrap token is revoked, and the exact repository/workflow/environment Trusted Publisher is configured before any later workflow publication.
-- [ ] GitHub `npm-release` environment protection actually requires the intended manual approval.
-- [ ] Pinned workflow actions, permissions, runner labels, Node/npm versions, and native toolchains are reviewed.
+- [x] Public Git HEAD and repository URL are verified and immutable for the release.
+- [x] `package.json`, lockfile, CLI `--version`, release notes, and tag all say `promethee-pomodoro@1.0.1` / `v1.0.1`.
+- [x] The public unscoped npm name and maintainer/Trusted Publisher ownership are verified.
+- [x] The one-time exact bootstrap publication, account 2FA, tarball digest, command, and `latest` mutation received separate approval.
+- [x] Registry readback passed, the bootstrap session was revoked, and the exact repository/workflow/environment Trusted Publisher was configured for later publication.
+- [x] GitHub `npm-release` environment protection required the intended manual approval.
+- [x] Pinned workflow actions, permissions, runner labels, Node/npm versions, and native toolchains were reviewed.
 - [x] Electron `43.2.0` is explicitly approved and locked; current source tests/build pass. Clean package installation and platform runtime checks remain separate gates below.
-- [ ] Core, integration, persistence, Electron, typecheck, build, and release-package checks pass on the intended revision.
-- [ ] The exact tarball file list, unpacked content, license, dependency graph, executable mode, three helpers, SHA-256, and absence of secrets/private artifacts are reviewed.
+- [x] Core, integration, persistence, Electron, typecheck, build, and release-package checks passed on the intended revision.
+- [x] The exact tarball file list, unpacked content, license, dependency graph, executable mode, three helpers, SHA-256, and absence of secrets/private artifacts were reviewed.
 - [ ] The four-tab menu, task-time tracker/store, `task-time-v1.json` schema, no-session-ID invariant, deterministic newest-10,000/`<8 MiB` retention, deletion, and CSV projection are reviewed with synthetic data only.
 - [ ] The packaged SVG/ICNS icons and secondary macOS local application bundle are reviewed; no Apple Developer ID or notarization claim is made.
-- [ ] Clean candidate install/version checks pass on macOS arm64, macOS x64, and Windows x64.
+- [x] Clean exact-package install/version/Electron/helper checks passed on macOS arm64, macOS x64, and Windows x64.
 - [ ] Real GUI/Promethee/permission checks are recorded separately from package smoke and supported claims are narrowed to that evidence.
 - [ ] Known issues, changelog, rollback, uninstall, and unsigned-platform warnings are approved.
-- [ ] The project owner explicitly approves the exact tag, package/version, tarball digest, `latest` mutation, GitHub Release, workflow, and registry target.
+- [x] The project owner explicitly approved the exact tag, package/version, tarball digest, `latest` mutation, GitHub Release, workflow, and registry target.
 - [x] The V1 tag/GitHub Release procedure is reconciled: exact registry integrity and `latest` readback make the paused post-bootstrap job idempotent before GitHub Release creation.
 
 ### After an authorized workflow
 
-- [ ] Every required job passed against the same source tag and assembled tarball.
-- [ ] GitHub Release tag, source, tarball, `SHA256SUMS`, and generated notes agree.
-- [ ] npm readback confirms package, version, `latest`, integrity, executable mapping, repository/license metadata, and provenance when expected.
+- [x] Every required job passed against the same source tag and assembled tarball.
+- [x] GitHub Release tag, source, tarball, `SHA256SUMS`, and generated notes agree.
+- [x] npm readback confirms package, version, `latest`, integrity, executable mapping, repository/license metadata, and no provenance claim for the one-time bootstrap.
 - [ ] A fresh public-registry install, `--version`, normal/foreground launch, and uninstall pass on every claimed platform.
 - [ ] Update detection points users to the matching reviewed release and never installs code.
-- [ ] Documentation status changes from candidate/unpublished only after all relevant readback passes.
+- [x] Documentation status changed from candidate/unpublished only after all relevant readback passed.
 
 ## Troubleshooting
 

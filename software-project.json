@@ -10,10 +10,10 @@
     "Keep the real Promethee timer visible and interactive; local surfaces must not intercept its controls or transient Accept surface.",
     "Reset timer restarts only the current local Pomodoro phase at its configured duration and never controls or resets Promethee.",
     "Select French when the primary operating-system language begins with fr and English otherwise until an explicit preference is implemented.",
-    "Prepare the public unscoped promethee-pomodoro@1.0.1 npm package for macOS arm64, macOS x64, and passive Windows x64; stable latest publication requires exact manual approval and verified workflow/registry evidence.",
+    "Distribute the public unscoped promethee-pomodoro@1.0.1 npm package for macOS arm64, macOS x64, and passive Windows x64; every later stable latest publication requires exact manual approval and verified workflow/registry evidence.",
     "Treat install-electron.sh as a secondary macOS source path and defer native installers, Apple Developer ID/notarization, Windows Authenticode, and project-signed delivery.",
     "Treat the macOS installer's post-install Accessibility and ScreenCapture TCC reset for current and retired bundle identifiers as a temporary ad-hoc-cdhash workaround only; it never grants permissions, users must revalidate and regrant after every V1 rebuild or install, and future Apple Developer ID signing is the stable update-identity solution.",
-    "The npm name was unclaimed at the 2026-08-26 E404 check; first publication requires separate approval for one short-lived granular-token/2FA bootstrap, registry readback, token revocation, and exact Trusted Publisher setup before later OIDC releases.",
+    "The npm name was unclaimed at the 2026-08-26 E404 check; the separately approved 1.0.1 bootstrap used the exact workflow artifact and a short-lived authenticated 2FA session, registry readback passed, and the local session was revoked; later releases use the exact Trusted Publisher/OIDC workflow.",
     "Electron is locked at the authorized 43.2.0; local source validation does not establish clean npm installation, running-runtime identity, or Windows support.",
     "Track time only for the selected task while the real Promethee session observation is running; task changes close the previous local interval.",
     "Persist ADR-0019 reporting data only in task-time-v1.json: bounded task/project snapshots and local interval timestamps are allowed, but Promethee session identifiers are never persisted, exposed to the renderer, or exported.",
@@ -94,6 +94,20 @@
         "not_proven": "screen-recording-grant-and-automatic-relaunch"
       }
     },
+    "release_v1_0_1": {
+      "artifact_sha256": "9ba4d339b16f3adcb0cd249890e615b57f99cbe45ed4c229bfad32367a5a51d9",
+      "commit": "06af679b4909a309e919c67e557c9c3c33787905",
+      "github_release": "https://github.com/BRYANN2K/promethee-pomodoro/releases/tag/v1.0.1",
+      "npm_integrity": "sha512-+cSk8dhKNadxI8lBfOPmBlL3SCpbfvbRrWFAEDRZnjotvjpuzaOftlXFq24huc3yUJLj5elOJn5hPo+BDJ1tDA==",
+      "npm_latest": "1.0.1",
+      "release_run": 32966038040,
+      "smoke_targets": [
+        "darwin-arm64",
+        "darwin-x64",
+        "win32-x64-passive"
+      ],
+      "status": "published-registry-and-github-readback-verified"
+    },
     "task_time_ledger": {
       "adr": "ADR-0019",
       "file": "task-time-v1.json",
@@ -131,7 +145,7 @@
     "Prove the host-wired ADR-0013 session observer with an exact synthetic 1.3.29 fixture, lifecycle/freshness cases, and evidence that observations never become acknowledgements or automatic-retry authority",
     "Extend the authorized macOS 1.3.29 same-session focus/pause/short-break/resume/focus evidence through broader reviewed product and platform flows without creating command acknowledgement; add cycle-snapshot lifecycle recovery separately",
     "Real HUD geometry, exclusions, and platform input/z-order proof",
-    "Immutable public Git source, authorized matching V1 tag, reviewed npm tarball/GitHub Release, one-time unclaimed-name bootstrap, token revocation, exact Trusted Publisher/environment ownership, protected approval, workflow execution, registry readback, and clean macOS arm64, macOS x64, and Windows x64 candidate installs",
+    "Maintain exact Trusted Publisher/environment ownership, protected manual approval, artifact integrity readback, and immutable workflow ordering for later releases",
     "Native signing identities and installers for a later release phase"
   ],
   "package_managers": [
@@ -150,8 +164,8 @@
   "release_candidate": {
     "artifact": "public-unscoped-npm-package",
     "name": "promethee-pomodoro",
-    "publication_status": "configured-unpublished-unverified",
-    "stable_dist_tag": "latest-after-explicit-manual-approval",
+    "publication_status": "published-registry-and-github-readback-verified",
+    "stable_dist_tag": "latest",
     "targets": [
       "darwin-arm64",
       "darwin-x64",

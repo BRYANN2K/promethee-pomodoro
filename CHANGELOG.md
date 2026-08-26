@@ -2,9 +2,9 @@
 
 All notable changes to Promethee Pomodoro are recorded here. A version remains **Unreleased** until its exact npm package and source revision are publicly available and verified.
 
-## [1.0.1] - 2026-08-26 (unpublished candidate)
+## [1.0.1] - 2026-08-26
 
-Initial public-release candidate, carrying the complete 1.0.0 product feature set plus release-gate corrections discovered by the first immutable workflow run.
+Initial public release, carrying the complete 1.0.0 product feature set plus release-gate corrections discovered by the first immutable workflow run.
 
 ### Fixed
 
@@ -12,6 +12,12 @@ Initial public-release candidate, carrying the complete 1.0.0 product feature se
 - Cross-platform Electron readiness smoke tests now use a bounded result file instead of depending on Windows GUI-process stdout capture.
 - The release dependency lock is restored to the explicitly authorized Electron `43.2.0`.
 - Release validation now covers 254 tests: 33 core, 71 integration, 17 persistence, and 133 Electron.
+
+### Release evidence
+
+- Published as `promethee-pomodoro@1.0.1` with npm `latest` pointing to `1.0.1`.
+- GitHub Release `v1.0.1` contains the exact workflow tarball and `SHA256SUMS`.
+- Clean installed-package Electron/helper smoke passed on macOS arm64, macOS x64, and Windows x64.
 
 ## [1.0.0] - 2026-08-26 (unpublished candidate)
 

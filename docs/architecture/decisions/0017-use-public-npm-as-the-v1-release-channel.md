@@ -118,4 +118,4 @@ npm fits the existing Electron/TypeScript package and supplies one early distrib
 - Defers but does not supersede: [ADR-0007](0007-deliver-signed-releases-and-updates-through-ci.md).
 - Depends on: [ADR-0001](0001-use-electron-and-typescript-for-the-cross-platform-target.md).
 - Approval evidence: explicit project-owner ruling in the current conversation on 2026-08-26.
-- Publication evidence: unavailable; the current work prepares a local candidate and does not publish.
+- Publication evidence: release run `32966038040` published `promethee-pomodoro@1.0.1` and matching `v1.0.1` GitHub assets after exact three-target installed-package smoke and registry integrity/`latest` readback.

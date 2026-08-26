@@ -1,6 +1,6 @@
 # Validation strategy
 
-**Status:** Active Electron/TypeScript/npm contract with mock-backed domain/integration evidence, a composed macOS native external bridge, a passive Windows candidate, fixture-backed Electron evidence, and one separately authorized bounded live macOS 1.3.29 flow.
+**Status:** Active Electron/TypeScript/npm contract with mock-backed domain/integration evidence, a composed macOS native external bridge, a passive Windows release, fixture-backed Electron evidence, one separately authorized bounded live macOS 1.3.29 flow, and a verified public `1.0.1` package matrix.
 
 Validation is reported as four distinct categories: passed, failed, skipped, and unavailable. Generated files, source inspection, controlled doubles, synthetic UI, screenshots, CI configuration, installed dependencies, and published artifacts are different evidence and must not be conflated.
 
@@ -44,8 +44,8 @@ Final frozen-source local evidence recorded on 2026-08-26 with the installed loc
 | Unavailable | Supported HUD/multi-window proof | The macOS host can read bounded window rectangles and create separate local surfaces, but has no authoritative exclusion stream, host-precedence proof, Windows equivalent, or support claim. |
 | Partial | ADR-0012 Electron task source | A host-wired built-in `node:sqlite` reader uses fixed task/project statements, strict bounds, and synthetic fixtures, and supplies the local picker. Exact supported-version schemas, complete renderer-isolation/database-side-effect proof, live task/project compatibility, and Windows runtime proof remain unavailable. |
 | Partial + research evidence | Promethee 1.3.29 session schema/state | A sanitized macOS read found WAL/session-schema/time-formula evidence. The host-wired reader implements the eight-field query and conservative derivation and supplies the external runtime controller. The bounded live flow observed state changes but did not create authoritative revision/acknowledgement or causation; exact synthetic 1.3.29 fixture and Windows proof remain unavailable. |
-| Unavailable | macOS/Windows support proof | No packaged application or real integration matrix has run on both target platforms. |
-| Configured, unverified | V1 package/release implementation | Public unscoped `promethee-pomodoro@1.0.1` metadata, one CLI mapping, three-target helper/file allowlist, secondary macOS source installer, pinned macOS/Windows CI and stable-tag release workflows, package verifier, and manual GitHub Releases check exist. The immutable `v1.0.0` run built all helpers but failed clean-package smoke before publication; `v1.0.1` must pass the complete matrix. There is no registry readback, clean public install/rollback, project signature, or notarization. |
+| Unavailable | Complete macOS/Windows live support proof | The public package matrix proves clean installation plus Electron/helper readiness on both operating-system families, but no real Windows Promethee integration matrix or broad macOS permission/display matrix has run. |
+| Passed at package boundary | V1 package/release implementation | Release run `32966038040` validated source, built all three helpers, smoke-tested the same installed tarball on macOS arm64, macOS x64, and Windows x64, verified npm integrity plus `latest=1.0.1`, and published the matching GitHub Release assets. There is no project signature, notarization, native installer, or live Windows Promethee proof. |
 | Unavailable | `RTK.md` instructions | `AGENTS.md` references this file, but it is absent from the repository. |
 
 The Node.js type-stripping test commands print an experimental-feature warning. Their passing results are local evidence, not a long-term test-runner compatibility commitment.

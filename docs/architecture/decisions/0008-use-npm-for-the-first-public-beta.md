@@ -134,5 +134,5 @@ npm fits the TypeScript/Electron shape and provides one early cross-platform cha
 - Defers: [ADR-0007](0007-deliver-signed-releases-and-updates-through-ci.md) for the first beta only.
 - Depends on: [ADR-0001](0001-use-electron-and-typescript-for-the-cross-platform-target.md).
 - Related: [ADR-0006](0006-negotiate-capabilities-and-fail-closed-across-promethee-versions.md).
-- Implemented by: the current package manifest, CLI, verifier, and release workflows; publication evidence remains unavailable.
+- Implemented by: the current package manifest, CLI, verifier, and release workflows; release run `32966038040` provides exact `promethee-pomodoro@1.0.1` npm and matching GitHub Release evidence.
 - Evidence: [npm staged publishing](https://docs.npmjs.com/staged-publishing/), [npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers/), [npm provenance](https://docs.npmjs.com/generating-provenance-statements/), [public scoped packages](https://docs.npmjs.com/creating-and-publishing-scoped-public-packages/), [global installation](https://docs.npmjs.com/downloading-and-installing-packages-globally/), [npm exec/npx](https://docs.npmjs.com/cli/npm-exec/), and [GitHub environments](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments).
