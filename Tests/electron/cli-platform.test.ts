@@ -118,10 +118,10 @@ test("macOS npm installation assembles, reuses, and safely replaces the branded 
 
   try {
     for (const relativePath of payloadFilesForTarget("darwin-arm64")) {
-      const source = path.join(repositoryRoot, relativePath);
       const destination = path.join(appRoot, relativePath);
       mkdirSync(path.dirname(destination), { recursive: true });
-      cpSync(source, destination);
+      if (relativePath === "package.json") cpSync(path.join(repositoryRoot, relativePath), destination);
+      else writeFileSync(destination, `fixture:${relativePath}\n`);
     }
     mkdirSync(path.join(electronAppPath, "Contents", "MacOS"), { recursive: true });
     mkdirSync(path.join(electronAppPath, "Contents", "Resources"), { recursive: true });
