@@ -31,6 +31,8 @@ const requiredFiles = [
   "dist/electron/handle.html",
   "dist/electron/handle.js",
   "dist/electron/geometry-poll-cadence.js",
+  "dist/electron/linux-hud-capture.js",
+  "dist/electron/linux-surface-attachment.js",
   "dist/electron/macos-hud-capture.js",
   "dist/electron/main.js",
   "dist/electron/menu.css",

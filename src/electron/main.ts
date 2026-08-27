@@ -3,6 +3,14 @@ import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import {
+  createSurfaceAttachment,
+  supportsSurfaceAttachment,
+  PLACEMENT_PENDING_ARGUMENT,
+  type AttachedSurface,
+  type SurfacePlacement
+} from "./linux-surface-attachment.ts";
+import { captureLinuxPrometheeHud, supportsLinuxHudCapture } from "./linux-hud-capture.ts";
 import { capturePrometheeHud, probeScreenCaptureTransport } from "./macos-hud-capture.ts";
 import {
   createGeometryPollCadence,
@@ -14,6 +22,8 @@ import {
 import {
   canArmNativeAutomation,
   effectiveNativeAutomationPermissionStatus,
+  nativeAutomationConsentModel,
+  nativeAutomationMechanismIsAssured,
   nativeAutomationPermissionStatus,
   readNativePrometheeProcessId,
   readNativeAutomationPermissions,
@@ -76,12 +86,31 @@ interface RuntimeContext {
   readonly workArea: ScreenRect;
 }
 
+// Under Wayland a window is on screen where the compositor dropped it before it
+// is on screen where the plan wanted it, so a surface that is shown as soon as
+// its bounds are set is shown in the wrong place first. Each one waits for the
+// helper to report the placement carried out. A session that never needs the
+// helper starts settled, because there a window places itself.
+let attachedPlacement: SurfacePlacement = Object.freeze({
+  detached: false,
+  opaque: false,
+  settled: !supportsSurfaceAttachment()
+});
+const surfaceAttachment = createSurfaceAttachment({
+  onPlacement: (placement: SurfacePlacement): void => {
+    attachedPlacement = placement;
+    revealAttachedSurfaces();
+  }
+});
 let overlayWindow: BrowserWindow | null = null;
 let handleWindow: BrowserWindow | null = null;
 let menuWindow: BrowserWindow | null = null;
 let overlayReady = false;
 let handleReady = false;
 let menuReady = false;
+// The last answer the pages were given, so an unchanged one is not repeated at
+// every poll. A page that opens later is told on its own when it becomes ready.
+let broadcastPlacement: boolean | null = null;
 let pendingOverlayBounds: Rectangle | null = null;
 let latestRuntimeContext: RuntimeContext | null = null;
 let lastGoodRuntimeAt = 0;
@@ -119,11 +148,18 @@ let applicationExitStarted = false;
 let applicationRestarting = false;
 let nativeAutomationAuthorityGranted = false;
 let nativeControlAbortController: AbortController | null = null;
+// Nothing has been probed yet at this point, so this is what the app assumes
+// until something has. Assuming a refusal is only safe where there is certainly
+// something to refuse; where there may be no mechanism at all, assuming one and
+// calling it denied would open the recovery UI over a session that has nothing
+// to recover, before the first probe has had a chance to say so.
+const AUTOMATION_MECHANISM_ASSURED = AUTOMATION_AVAILABLE &&
+  nativeAutomationMechanismIsAssured(process.platform);
 let nativeAutomationPermissions: NativeAutomationPermissionStatus = Object.freeze({
   inputEvents: false,
   screenCapture: false,
-  status: AUTOMATION_AVAILABLE ? "denied" : "unavailable",
-  supported: AUTOMATION_AVAILABLE
+  status: AUTOMATION_MECHANISM_ASSURED ? "denied" : "unavailable",
+  supported: AUTOMATION_MECHANISM_ASSURED
 });
 let permissionRefreshPromise: Promise<void> | null = null;
 let startupPermissionRequestAttempted = false;
@@ -139,6 +175,7 @@ function createOutlineWindow(): BrowserWindow {
   window.webContents.once("did-finish-load", () => {
     if (overlayWindow !== window || window.isDestroyed()) return;
     overlayReady = true;
+    sendPlacement(window);
     if (pendingOverlayBounds !== null) showOutline(pendingOverlayBounds);
     sendRuntimeSnapshot();
   });
@@ -154,6 +191,7 @@ function createHandleWindow(): BrowserWindow {
   window.webContents.once("did-finish-load", () => {
     if (handleWindow !== window || window.isDestroyed()) return;
     handleReady = true;
+    sendPlacement(window);
     sendMenuState();
     sendRuntimeSnapshot();
     applyRuntimePlan(false);
@@ -170,6 +208,7 @@ function createMenuWindow(): BrowserWindow {
   window.webContents.once("did-finish-load", () => {
     if (menuWindow !== window || window.isDestroyed()) return;
     menuReady = true;
+    sendPlacement(window);
     sendMenuState();
     sendRuntimeSnapshot();
     sendPreferences();
@@ -205,6 +244,7 @@ function createAttachedWindow(size: { focusable: boolean; height: number; width:
     skipTaskbar: true,
     transparent: true,
     webPreferences: {
+      additionalArguments: supportsSurfaceAttachment() ? [PLACEMENT_PENDING_ARGUMENT] : [],
       contextIsolation: true,
       nodeIntegration: false,
       preload: path.join(currentDirectory, preloadName),
@@ -555,9 +595,7 @@ async function performPermissionRefresh(request: boolean): Promise<void> {
     const helperPermissions = await (request ? requestNativeAutomationPermissions() : readNativeAutomationPermissions());
     if (applicationExitStarted || applicationRestarting) return;
     helperScreenCaptureIsGranted = helperPermissions.screenCapture;
-    const capturePoint = screen.getPrimaryDisplay().bounds;
-    const captureTransportAvailable = helperPermissions.screenCapture &&
-      await probeScreenCaptureTransport({ x: capturePoint.x, y: capturePoint.y });
+    const captureTransportAvailable = helperPermissions.screenCapture && await probeCaptureTransport();
     if (applicationExitStarted || applicationRestarting) return;
     nativeAutomationPermissions = effectiveNativeAutomationPermissionStatus(helperPermissions, captureTransportAvailable);
   }
@@ -635,13 +673,26 @@ function updateNativeAutomationAuthority(): void {
   }
 }
 
+// On macOS the helper reads a recorded grant, and a recorded grant is a claim
+// about a future call rather than the call itself, so the transport is exercised
+// once for real before the app trusts it. The Linux helper answers by binding the
+// capture protocol, which is the same act it would perform to take a frame, so
+// asking again would only repeat what has already been done.
+async function probeCaptureTransport(): Promise<boolean> {
+  if (supportsLinuxHudCapture()) return true;
+  const capturePoint = screen.getPrimaryDisplay().bounds;
+  return probeScreenCaptureTransport({ x: capturePoint.x, y: capturePoint.y });
+}
+
 function createNativeControl(): NativePrometheeControl {
   return new NativePrometheeControl({
     authority: readControlObservation,
     capture: async (signal) => {
       const context = latestRuntimeContext;
       if (context === null) throw new Error("Promethee HUD is unavailable.");
-      return capturePrometheeHud(context.timer, context.processId, context.generation, signal);
+      return supportsLinuxHudCapture()
+        ? captureLinuxPrometheeHud(context.timer, context.processId, context.generation, signal)
+        : capturePrometheeHud(context.timer, context.processId, context.generation, signal);
     },
     platform: process.platform
   });
@@ -851,14 +902,55 @@ function applyRuntimePlan(focusMenu: boolean): void {
   retainedHandleSide = plan.handle.side;
   if (plan.outline === null || plan.handle.bounds === null) { revokeRuntimeSurfaces(); return; }
   runtimeInteractionSuspended = false;
+  const menuBounds = menuOpen && plan.menu.bounds !== null ? plan.menu.bounds : null;
+  // The compositor is asked before anything is shown, so a plan that has moved
+  // takes the surfaces out of the running for this frame instead of showing them
+  // at bounds the compositor has not agreed to yet.
+  attachRuntimeSurfaces(plan.outline, plan.handle.bounds, menuBounds);
   showOutline(plan.outline);
   showHandle(plan.handle.bounds);
-  if (menuOpen && plan.menu.bounds !== null) showRuntimeMenu(plan.menu.bounds, focusMenu);
+  if (menuBounds !== null) showRuntimeMenu(menuBounds, focusMenu);
   else hideRuntimeMenu();
+}
+
+// The outline is the one surface that must not answer the pointer: it covers
+// the real pill, and a compositor that hands it the click takes Promethee's own
+// drag and Play/Pause with it.
+function attachRuntimeSurfaces(
+  outline: Rectangle,
+  handle: Rectangle,
+  menu: Rectangle | null
+): void {
+  surfaceAttachment.place([
+    // A session that has already refused to take the outline out of the running
+    // for the pointer will refuse again, and the outline is down for good, so it
+    // is named as a surface that is not on screen rather than asked for anew.
+    attachedSurface(overlayWindow, attachedPlacement.opaque ? null : outline, "transparent"),
+    attachedSurface(handleWindow, handle, "interactive"),
+    attachedSurface(menuWindow, menu, "interactive")
+  ]);
+}
+
+function attachedSurface(
+  window: BrowserWindow | null,
+  bounds: Rectangle | null,
+  input: AttachedSurface["input"]
+): AttachedSurface | null {
+  if (window === null || window.isDestroyed()) return null;
+  // The compositor knows these windows by the title the page gives them, so the
+  // window is asked for its own rather than matched against a copy kept here.
+  return Object.freeze({
+    input,
+    position: bounds === null ? null : Object.freeze({ x: bounds.x, y: bounds.y }),
+    title: window.getTitle()
+  });
 }
 
 function hideAttachedRuntimeSurfaces(): void {
   pendingOverlayBounds = null;
+  // A hidden surface loses whatever the compositor was told about it, so the
+  // placement it comes back to has to be asked for again rather than assumed.
+  surfaceAttachment.forget();
   for (const window of [overlayWindow, handleWindow]) {
     if (window !== null && !window.isDestroyed()) {
       window.setIgnoreMouseEvents(true);
@@ -887,6 +979,10 @@ function showStandaloneRuntimeMenu(focusMenu: boolean): void {
     window.focus();
     window.webContents.send("runtime:menu-state", true);
   }
+  // The recovery menu is centered rather than attached, and a compositor that
+  // places its own windows still has to be told this one is not a tile.
+  surfaceAttachment.place([attachedSurface(window, bounds, "interactive")]);
+  sendPlacement(window);
 }
 
 function showOutline(bounds: Rectangle): void {
@@ -895,7 +991,7 @@ function showOutline(bounds: Rectangle): void {
   if (window === null || window.isDestroyed() || !overlayReady) return;
   window.setBounds(bounds, false);
   window.setIgnoreMouseEvents(true);
-  if (!window.isVisible()) window.showInactive();
+  revealAttachedSurfaces();
 }
 
 function showHandle(bounds: Rectangle): void {
@@ -905,6 +1001,7 @@ function showHandle(bounds: Rectangle): void {
   window.setIgnoreMouseEvents(false);
   window.setFocusable(true);
   if (!window.isVisible()) window.showInactive();
+  sendPlacement(window);
 }
 
 function showRuntimeMenu(bounds: Rectangle, focusMenu: boolean): void {
@@ -917,6 +1014,37 @@ function showRuntimeMenu(bounds: Rectangle, focusMenu: boolean): void {
   window.webContents.send("runtime:snapshot", runtimePayload());
   if (!wasVisible) window.show();
   if (focusMenu) { window.focus(); window.webContents.send("runtime:menu-state", true); }
+  sendPlacement(window);
+}
+
+// A window has to be mapped before a compositor will place it, so the surfaces
+// go up as soon as they have bounds and it is their pages that stay blank until
+// the placement is confirmed. The outline is the one surface that stays down for
+// good on a session with no per-window input transparency: it covers the real
+// pill, so a compositor that hands it the pointer takes Promethee's own drag and
+// Play/Pause with it. There the pill is left uncircled rather than made unusable.
+// It also stays down when the compositor gave up placing anything: an outline
+// drawn away from the pill circles nothing and points at the wrong thing, which
+// is worse than no outline. The handle and menu still show, detached or not,
+// because between them they are every control the app has.
+function revealAttachedSurfaces(): void {
+  const outline = overlayWindow;
+  if (outline !== null && !outline.isDestroyed() && overlayReady) {
+    const wanted = pendingOverlayBounds !== null &&
+      !attachedPlacement.opaque && !attachedPlacement.detached;
+    if (wanted && !outline.isVisible()) outline.showInactive();
+    else if (!wanted && outline.isVisible()) outline.hide();
+  }
+  if (broadcastPlacement === attachedPlacement.settled) return;
+  broadcastPlacement = attachedPlacement.settled;
+  for (const window of [overlayWindow, handleWindow, menuWindow]) sendPlacement(window);
+}
+
+// A page that has just opened has not heard any of this, so it is told on its
+// own rather than waiting for the next time the answer changes.
+function sendPlacement(window: BrowserWindow | null): void {
+  if (window === null || window.isDestroyed()) return;
+  window.webContents.send("runtime:placement", attachedPlacement.settled);
 }
 
 function closeRuntimeMenu(): void {
@@ -959,6 +1087,7 @@ function sendRuntimeSnapshot(): void {
 function runtimePayload(): object {
   return Object.freeze({
     automationEnabled: nativeAutomationAuthorityGranted,
+    consentModel: nativeAutomationConsentModel(process.platform),
     permissions: permissionPayload(),
     presentation: standaloneMenuReason === "permission" ? "permission-recovery" : standaloneMenuReason === "geometry" ? "standalone" : "attached",
     restarting: applicationRestarting,
@@ -981,6 +1110,7 @@ function sendTaskTime(payload: object = taskTimePayload()): void {
 function bootstrapPayload(): object {
   return Object.freeze({
     automationEnabled: nativeAutomationAuthorityGranted,
+    consentModel: nativeAutomationConsentModel(process.platform),
     locale,
     permissions: permissionPayload(),
     presentation: standaloneMenuReason === "permission" ? "permission-recovery" : standaloneMenuReason === "geometry" ? "standalone" : "attached",

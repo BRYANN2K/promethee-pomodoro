@@ -4,9 +4,11 @@
 
 **Bridge** — a narrow, owner-approved Promethee interface for session, task, and HUD capabilities. It is not Promethee's private renderer IPC.
 
-**Native input transport** — the accepted macOS action/geometry portion of the external bridge under ADR-0011/ADR-0016. Active Electron uses a native process/window helper and a target derived from the rendered Pause/Play glyph; CoreGraphics posts at most one macOS click. New installs default automatic Pause on and automatic Resume off, persisted values remain unchanged, and current permission/evidence plus the environment kill switch gate both. Windows V1 is observation-only and has no input transport. No action acknowledges state or retries.
+**Native input transport**: the accepted macOS action/geometry portion of the external bridge under ADR-0011/ADR-0016. Active Electron uses a native process/window helper and a target derived from the rendered Pause/Play glyph; CoreGraphics posts at most one macOS click. New installs default automatic Pause on and automatic Resume off, persisted values remain unchanged, and current permission/evidence plus the environment kill switch gate both. Windows V1 is observation-only and has no input transport. Linux carries the same two actions under ADR-0021, on a session that offers a capture and an injection mechanism, with the click posted through a Wayland virtual pointer or through XTest instead of CoreGraphics. No action acknowledges state or retries.
 
 **Passive Windows runtime** — the Windows x64 V1 candidate can locate the Promethee HUD, read only allowlisted task/session observations, render attached local surfaces, and accept manual Pomodoro transitions. It cannot Pause or Resume Promethee automatically and fails closed when required evidence is unavailable.
+
+**Passive Linux runtime** covers the Linux x64 V1 candidate. It does the same, against a locally built Promethee, and asks the session's own window server where Promethee's window is because a Wayland client cannot enumerate another client's windows. It tries Hyprland, then Sway or i3, then X11, and refuses to fall through to a backend answering for another display. Wayland gives a client no way to ask for its own position, so the helper also asks the compositor to place the companion's own surfaces, and only those the compositor reports as owned by the helper's own parent process. No published package contains it yet.
 
 **Release candidate** — a prepared package, helper set, and workflow awaiting verified npm/GitHub publication. The `promethee-pomodoro@1.0.1` candidate passed that gate and is now the first public release; publication does not by itself establish live Promethee support on every platform.
 
@@ -54,4 +56,4 @@
 
 **Target** — approved designed behavior that is not yet evidence of implementation.
 
-**Vertical proof** — a bounded end-to-end bridge exercise against a recorded Promethee/OS/version combination. The authorized macOS 1.3.29 same-session flow is one platform proof; Windows requires its own exercise.
+**Vertical proof**: a bounded end-to-end bridge exercise against a recorded Promethee/OS/version combination. The authorized macOS 1.3.29 same-session flow is one platform proof; Linux and Windows each require their own exercise. The live Linux exercise covers a single Hyprland session and no other compositor; Sway and X11 have answered against a synthetic client only.

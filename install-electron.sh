@@ -71,6 +71,7 @@ for source_file in "${SCRIPT_DIR}"/dist/core/*.js; do
 done
 for relative_file in \
     geometry-poll-cadence.js handle.css handle.html handle.js \
+    linux-hud-capture.js linux-surface-attachment.js \
     macos-hud-capture.js native-promethee-bridge.js promethee-control.js main.js \
     menu.css menu.html menu.js overlay.css overlay.html overlay.js \
     promethee-sqlite.js promethee-window-locator.js release-update.js \

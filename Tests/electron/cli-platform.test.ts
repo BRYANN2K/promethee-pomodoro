@@ -52,6 +52,24 @@ test("the public launcher explicitly allowlists only packaged V1 targets", async
   assert.match(source, /new Set\(\["darwin-arm64", "darwin-x64", "win32-x64"\]\)/);
   assert.match(source, /does not provide a V1 runtime/);
   assert.ok(Array.isArray(manifest.files));
+
+  // The allowlist is a promise that the package can run here, and the only
+  // thing that can keep it is a helper the package actually ships. Naming a
+  // target the published files do not carry gets Electron launched on a
+  // machine with nothing to attach with, so the two lists are asserted against
+  // each other rather than each against a literal.
+  const allowlisted = [...(source.match(/new Set\(\[(.*?)\]\)/s)?.[1] ?? "").matchAll(/"([^"]+)"/g)].map(([, entry]) => entry);
+  assert.deepEqual(allowlisted, ["darwin-arm64", "darwin-x64", "win32-x64"]);
+  for (const target of allowlisted) {
+    assert.ok(
+      manifest.files.some((entry) => typeof entry === "string" && entry.startsWith(`dist/native/${target}/`)),
+      `${target} is allowlisted by the launcher but ships no native helper`
+    );
+  }
+  assert.equal(
+    manifest.files.some((entry) => typeof entry === "string" && entry.startsWith("dist/native/linux-x64/")),
+    false
+  );
   assert.equal(manifest.files.some((entry) => typeof entry === "string" && entry.startsWith("scripts/")), false);
   assert.match(verifier, /"scripts\/"/);
   assert.match(packageCommand, /Installed Promethee Pomodoro payload is complete/);

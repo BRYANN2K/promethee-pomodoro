@@ -53,6 +53,8 @@ jobs:
             target: darwin-arm64
           - runner: macos-15-intel
             target: darwin-x64
+          - runner: ubuntu-24.04
+            target: linux-x64
           - runner: windows-2025
             target: win32-x64
 
@@ -72,6 +74,13 @@ jobs:
       - name: Build macOS helper
         if: runner.os == 'macOS'
         run: npm run target:build:native
+
+      - name: Build Linux helper
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends --yes libx11-dev libxcomposite-dev libxtst-dev libwayland-dev
+          npm run target:build:native
 
       - name: Build Windows helper
         if: runner.os == 'Windows'
@@ -98,6 +107,31 @@ jobs:
         env:
           RELEASE_TARGET: ${{ matrix.target }}
         run: test "$("dist/native/${RELEASE_TARGET}/promethee-input-bridge" self-test)" = "ready,1,pause-resume"
+
+      - name: Exercise Linux helper safely
+        if: runner.os == 'Linux'
+        shell: bash
+        env:
+          RELEASE_TARGET: ${{ matrix.target }}
+        run: |
+          test "$("dist/native/${RELEASE_TARGET}/promethee-input-bridge" self-test)" = "ready,1,pause-resume"
+          # A CI runner has no compositor, so the probe finds no slot to ask and
+          # has to say so under its own name rather than call it a refusal.
+          # Asserting it keeps the path that decides whether Linux automation
+          # exists at all from rotting silently, which is why this job runs.
+          output="$("dist/native/${RELEASE_TARGET}/promethee-input-bridge" permission-status)" && status=0 || status=$?
+          test "${output}" = "automation-unsupported"
+          test "${status}" = "2"
+          # The same runner is the one session where a capture is certain to be
+          # impossible, which makes it the place to assert that an impossible
+          # capture writes nothing. A file left behind here would be a raster the
+          # classifier could read on a machine that never showed a HUD. No window
+          # server answered, so the refusal comes from the discovery step rather
+          # than from the capture slot, which is never reached.
+          output="$("dist/native/${RELEASE_TARGET}/promethee-input-bridge" capture 1 0 0 0 159 32 "${RUNNER_TEMP}/hud.rgba")" && status=0 || status=$?
+          test "${output}" = "window-list-incomplete"
+          test "${status}" = "3"
+          test ! -e "${RUNNER_TEMP}/hud.rgba"
 
       - name: Exercise Windows helper safely
         if: runner.os == 'Windows'

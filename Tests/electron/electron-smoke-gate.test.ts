@@ -20,6 +20,10 @@ test("the exact installed tarball is smoke-launched through branded macOS bundle
   assert.match(releaseWorkflow, /runner: macos-15\s+target: darwin-arm64/);
   assert.match(releaseWorkflow, /runner: macos-15-intel\s+target: darwin-x64/);
   assert.match(releaseWorkflow, /runner: windows-2025\s+target: win32-x64/);
+  // Linux stays a CI-only target, so the release never builds or smokes it.
+  assert.doesNotMatch(releaseWorkflow, /linux/i);
+  // The macOS path launches the installed app bundle directly; Windows launches
+  // the installed CLI once with the flag.
   assert.equal(releaseWorkflow.match(/--smoke-test/g)?.length, 1);
   assert.match(releaseWorkflow, /PROMETHEE_POMODORO_INSTALL_DIR="\$INSTALL_ROOT" "\$PREFIX\/bin\/promethee-pomodoro" --install-only/);
   assert.match(releaseWorkflow, /plutil -extract CFBundleIdentifier raw/);

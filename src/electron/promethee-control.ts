@@ -1,15 +1,19 @@
 import {
   executeNativeBridge,
   nativeBridgeExecutable,
+  nativeClickTimeoutMs,
   supportsNativeAutomation,
   type NativeBridgeExecutionRequest,
   type NativeBridgeExecutor
 } from "./native-promethee-bridge.ts";
 
-const COMMAND_TIMEOUT_MS = 800;
 const COMMAND_MAX_BUFFER_BYTES = 4 * 1024;
 const MAX_RECEIPT_BYTES = 64;
 const MAX_CONTROL_RING_MEAN_DELTA = 0.12;
+// How far the bars of a Pause glyph may sit from the offset that went looking for
+// them and still be that control rather than the next one along. The controls are
+// 32 pixels apart, so anything past this is a different glyph.
+const MAX_PAUSE_GLYPH_DRIFT = 2;
 const SAMPLE_OFFSETS = Object.freeze([
   [-8, 0], [8, 0], [0, -8], [0, 8],
   [-6, -6], [6, -6], [-6, 6], [6, 6]
@@ -40,7 +44,13 @@ export type PrometheeControlFailureReason =
   | "timer-ambiguous"
   | "timer-not-found"
   | "target-mismatch"
-  | "unsupported-platform";
+  | "unsupported-platform"
+  // Linux only. The window server the helper reads geometry from failed to
+  // answer, so the helper could not re-verify the target and never pressed
+  // anything. It is a different thing from finding no window, and treating it
+  // as an unreadable receipt would leave a reconciliation pending over a click
+  // that provably did not happen.
+  | "window-list-incomplete";
 
 export type PrometheeControlResult =
   | {
@@ -278,7 +288,7 @@ export class NativePrometheeControl {
         executable,
         maxBufferBytes: COMMAND_MAX_BUFFER_BYTES,
         ...(signal === undefined ? {} : { signal }),
-        timeoutMs: COMMAND_TIMEOUT_MS
+        timeoutMs: nativeClickTimeoutMs(this.platform)
       });
       result = parsePrometheeNativeReceipt(execution.stdout, action, finalCapture.generation);
     } catch {
@@ -415,7 +425,8 @@ export function parsePrometheeNativeReceipt(
   }
   const knownNotSentFailures = new Set<PrometheeControlFailureReason>([
     "invalid-action", "permission-denied", "process-ambiguous", "process-changed",
-    "process-not-found", "state-mismatch", "target-mismatch", "timer-ambiguous", "timer-not-found"
+    "process-not-found", "state-mismatch", "target-mismatch", "timer-ambiguous", "timer-not-found",
+    "window-list-incomplete"
   ]);
   if (knownNotSentFailures.has(receipt as PrometheeControlFailureReason)) {
     return failed(expectedAction, receipt as PrometheeControlFailureReason, "not-sent");
@@ -436,11 +447,18 @@ export function classifyPrometheeHudRaster(raster: PrometheeHudRaster): Promethe
     Math.abs(right.mean - middle.mean) > MAX_CONTROL_RING_MEAN_DELTA
   ) return Object.freeze({ status: "unsupported" });
   const baseMean = (right.mean + middle.mean) / 2;
-  if (optional.range <= 0.05 && isPlayGlyph(raster, maxX - 82, 16, optional.mean)) {
+  if (
+    optional.range <= 0.05 &&
+    (isPlayGlyph(raster, maxX - 82, 16, optional.mean) ||
+      isNarrowPlayGlyph(raster, maxX - 82, 16, optional.mean))
+  ) {
     return classified("paused", [controlRect(maxX - 82), controlRect(maxX - 50), controlRect(maxX - 18)]);
   }
   if (baseMean - optional.mean >= 0.10) {
-    if (!isPauseGlyph(raster, maxX - 50, 16, middle.mean)) return Object.freeze({ status: "unsupported" });
+    if (
+      !isPauseGlyph(raster, maxX - 50, 16, middle.mean) &&
+      !isPauseGlyphOffCenter(raster, maxX - 50, 16, middle.mean)
+    ) return Object.freeze({ status: "unsupported" });
     return classified("running", [controlRect(maxX - 50), controlRect(maxX - 18)]);
   }
   return Object.freeze({ status: "unsupported" });
@@ -483,6 +501,48 @@ function isPauseGlyph(raster: PrometheeHudRaster, centerX: number, centerY: numb
     Math.abs(maximumCoordinate(left, "y") - maximumCoordinate(right, "y")) <= 2;
 }
 
+// Reached only once the test above has said no, so it can widen what counts as a
+// Pause and never narrow it. The centre it is given is counted back from the HUD's
+// right edge, and a HUD whose width puts the control on a half pixel leaves that
+// count a pixel short: the ring test tolerates it, the gap bucket does not, and a
+// bar falls into the gap. So the same shape is asked of the bars' own midpoint,
+// bounded so it cannot wander onto the control next door. Measured on Hyprland at
+// a HUD width of 145: bars at 92, 93, 96 and 97, midpoint 94.5, offset 94.
+//
+// The control does not move with it. The target stays the offset, which is what
+// the native helpers recompute from the window they are pressing and the only
+// value they accept.
+function isPauseGlyphOffCenter(
+  raster: PrometheeHudRaster,
+  centerX: number,
+  centerY: number,
+  backgroundMean: number
+): boolean {
+  const brightNeutral: Array<{ readonly x: number; readonly y: number }> = [];
+  // One column wider each way than the bars can reach, so a glyph sitting a pixel
+  // off the offset is measured whole rather than clipped at the edge.
+  for (let offsetY = -7; offsetY <= 7; offsetY += 1) {
+    for (let offsetX = -7; offsetX <= 7; offsetX += 1) {
+      const pixel = readPixel(raster, centerX + offsetX, centerY + offsetY);
+      if (
+        pixel !== null && pixel.luminance >= backgroundMean + 0.25 &&
+        Math.max(pixel.red, pixel.green, pixel.blue) - Math.min(pixel.red, pixel.green, pixel.blue) <= 0.15
+      ) brightNeutral.push({ x: offsetX, y: offsetY });
+    }
+  }
+  if (brightNeutral.length === 0) return false;
+  // A half pixel whenever the glyph spans an even number of columns, which is the
+  // whole of the case this exists for.
+  const middle = (minimumCoordinate(brightNeutral, "x") + maximumCoordinate(brightNeutral, "x")) / 2;
+  if (Math.abs(middle) > MAX_PAUSE_GLYPH_DRIFT) return false;
+  const left = brightNeutral.filter((pixel) => pixel.x < middle - 1);
+  const gap = brightNeutral.filter((pixel) => Math.abs(pixel.x - middle) <= 1);
+  const right = brightNeutral.filter((pixel) => pixel.x > middle + 1);
+  return isVerticalBar(left) && isVerticalBar(right) && gap.length <= 1 &&
+    Math.abs(minimumCoordinate(left, "y") - minimumCoordinate(right, "y")) <= 2 &&
+    Math.abs(maximumCoordinate(left, "y") - maximumCoordinate(right, "y")) <= 2;
+}
+
 function isVerticalBar(pixels: ReadonlyArray<{ readonly x: number; readonly y: number }>): boolean {
   if (pixels.length < 8 || pixels.length > 36) return false;
   const width = maximumCoordinate(pixels, "x") - minimumCoordinate(pixels, "x") + 1;
@@ -510,6 +570,52 @@ function isPlayGlyph(raster: PrometheeHudRaster, centerX: number, centerY: numbe
   const meanY = orange.reduce((sum, pixel) => sum + pixel.y, 0) / orange.length;
   return width >= 5 && width <= 11 && height >= 7 && height <= 13 &&
     leftCount >= 4 && middleCount >= 3 && rightCount >= 1 && leftCount >= rightCount * 1.4 && Math.abs(meanY) <= 1.25;
+}
+
+// Reached only once the test above has said no, so it can widen what counts as a
+// Play and never narrow it. That test counts pixels in buckets pinned two columns
+// either side of the control centre, which separates the flat edge from the point
+// on a triangle ten columns wide and cuts straight through one that is six. The
+// same balance is asked here of the glyph's own bounding box, so a narrow triangle
+// is weighed against itself rather than against a width it does not have.
+//
+// Measured on Hyprland at a HUD width of 191: 31 pixels, 6 columns by 7 rows, mass
+// a little above centre, and 6 against 6 in the pinned buckets where the balance
+// wants 1.4 to 1. Against its own box the same 31 pixels read 19 against 12.
+function isNarrowPlayGlyph(
+  raster: PrometheeHudRaster,
+  centerX: number,
+  centerY: number,
+  backgroundMean: number
+): boolean {
+  const orange: Array<{ readonly x: number; readonly y: number }> = [];
+  for (let offsetY = -7; offsetY <= 7; offsetY += 1) {
+    for (let offsetX = -6; offsetX <= 6; offsetX += 1) {
+      const pixel = readPixel(raster, centerX + offsetX, centerY + offsetY);
+      if (
+        pixel !== null && pixel.luminance >= backgroundMean + 0.12 && pixel.red >= 0.65 &&
+        pixel.red - pixel.green >= 0.18 && pixel.green - pixel.blue >= 0.08
+      ) orange.push({ x: offsetX, y: offsetY });
+    }
+  }
+  if (orange.length < 8 || orange.length > 60) return false;
+  const firstX = minimumCoordinate(orange, "x");
+  const lastX = maximumCoordinate(orange, "x");
+  const width = lastX - firstX + 1;
+  const height = maximumCoordinate(orange, "y") - minimumCoordinate(orange, "y") + 1;
+  if (width < 5 || width > 11 || height < 7 || height > 13) return false;
+  // A triangle is solid between its flat edge and its point, so a column with
+  // nothing in it means these pixels are two shapes rather than one glyph. The
+  // pinned buckets never had to ask, because a gap that wide could not pass them.
+  for (let column = firstX; column <= lastX; column += 1) {
+    if (!orange.some((pixel) => pixel.x === column)) return false;
+  }
+  // The middle column of an odd width belongs to neither half.
+  const middle = (firstX + lastX) / 2;
+  const nearEdge = orange.filter((pixel) => pixel.x < middle).length;
+  const nearPoint = orange.filter((pixel) => pixel.x > middle).length;
+  const meanY = orange.reduce((sum, pixel) => sum + pixel.y, 0) / orange.length;
+  return nearEdge >= 4 && nearPoint >= 1 && nearEdge >= nearPoint * 1.4 && Math.abs(meanY) <= 1.25;
 }
 
 function readPixel(

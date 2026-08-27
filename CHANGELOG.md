@@ -2,6 +2,33 @@
 
 All notable changes to Promethee Pomodoro are recorded here. A version remains **Unreleased** until its exact npm package and source revision are publicly available and verified.
 
+## [Unreleased]
+
+### Added
+
+- Linux x64 attached runtime for HUD location, allowlisted task/session observation, and manual Pomodoro transitions.
+- Pause and Resume on Linux, on a session that offers a mechanism for them. Capture and injection are each a three-slot probe: a sanctioned or wlroots Wayland protocol, then the XDG portal, then X11, with no fall-through, and the slot follows whichever window server already answered the window query. Slots 1 and 3 are built; the portal slot is declared and not built, so GNOME and KDE answer `automation-unsupported`, a third receipt that the app reads as unavailable rather than denied, since those sessions have nothing to turn on. i3 is read and never pressed. The press repeats the macOS preflight, returns `sent-unconfirmed`, and never retries.
+- Bounded HUD capture on Linux that asks for Promethee's own window rather than for a rectangle of the screen, because the HUD is translucent and a screen rectangle carries whatever is behind it. On Wayland that is one toplevel's own surface; on X11 it is that window's own off-screen pixmap, never the root. A capture that cannot be trusted writes no file.
+- A consent gate for the sessions where the system prompts for nothing. The two settings are the whole of the permission there, so the panel says so, drops the buttons that would open an operating-system pane that does not exist, reports an absent slot as a protocol the session does not offer, and states before the fact that the pointer is left on the control it pressed.
+- A native Linux helper that resolves Promethee's windows through the session's own window server, because a Wayland client cannot enumerate another client's windows. It tries Hyprland, then Sway/i3, then X11, and refuses to fall through to a backend answering for another display.
+- Compositor-assisted placement of the companion's own surfaces on Wayland, where a client can ask for a size and never for a position. The helper floats, pins, and places the outline, the handle, and the menu, keeps the outline out of the running for the pointer where the compositor supports it, and names a window only when the compositor reports the helper's own parent process as its owner. Promethee's windows stay read-only. No compositor configuration is required.
+- A page on those sessions stays blank until its window has been placed, because one that draws straight away draws where the compositor dropped it and then jumps. Only the windows of a session that waits are marked, so the pages themselves carry nothing about placement and every platform where a window places itself is untouched.
+- An outline that cannot be taken out of the running for the pointer is not placed at all. On Sway and i3 it would sit on the real pill and take Promethee's own drag and Play/Pause with it, which is worse than no outline, so the helper places nothing there and the app takes the outline down for the session.
+- `linux-x64` added to the CI matrix, which builds the helper and runs its `self-test` on every push. The release build, tarball, and smoke matrices deliberately stay macOS and Windows only, so no published package carries a Linux helper and Linux runs from a source checkout.
+
+### Fixed
+
+- The Pause glyph test no longer refuses a control that sits on a half pixel. The offset counted back from the HUD's right edge is a pixel short at a width of 145, which the ring test tolerates and the gap bucket does not, so one bar fell into the gap and a running HUD read as unsupported. A glyph the existing test refuses is now asked for a second time against the bars' own midpoint, which only widens what counts as a Pause. The control does not move with it: the target stays the offset, which is the value the native helpers recompute and the only one they accept.
+- The Play glyph test no longer refuses a triangle narrower than the one it was written for. Its buckets are pinned two columns from the disc centre, which separates the flat edge from the point on a ten column wide triangle and cuts straight through a six column wide one, so a correct triangle scored 6 against 6 where the test wants 1.4 to 1 and a paused HUD read as unsupported. A glyph the existing test refuses is now asked for a second time against its own bounding box, which only widens what counts as a Play.
+
+### Not yet released
+
+- No published package contains a Linux runtime, and none is planned for this change: `linux-x64` is a CI target only, so there is no release-tarball installation or smoke run for it.
+- Live evidence covers one Hyprland session, where the companion attached to and followed a real running Promethee HUD and one authorized Pause and Resume round trip passed. Sway and X11 have answered every helper command against a synthetic client and never against a real Promethee, i3 is unexercised, and every session except that one Hyprland login was nested, which measures what a compositor offers a client rather than what a full desktop does.
+- GNOME and KDE have no capture or injection slot, because the portal slot both would need is out of scope for this change rather than pending.
+- Promethee publishes no Linux build, so the Promethee every Linux measurement was taken against is its own Windows release, `app.asar` extracted from the release channel's package and run on a Linux Electron 43.2.0 with no compatibility layer anywhere and no Windows binary left in it. The HUD read by the classifier is upstream's renderer unmodified, but an official Promethee Linux build is not what any of this was measured on.
+- The outline's pointer passthrough on Hyprland is proven for a click and not for a drag. The drag was attempted and moved the HUD neither through the outline nor with the outline gone, which does not distinguish an outline that blocks the gesture from a HUD that does not answer it.
+
 ## [1.0.1] - 2026-08-26
 
 Initial public release, carrying the complete 1.0.0 product feature set plus release-gate corrections discovered by the first immutable workflow run.

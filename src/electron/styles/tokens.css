@@ -124,3 +124,16 @@
   --z-ready: 30;
   --z-settings: 40;
 }
+
+/*
+ * Under Wayland a window is on screen where the compositor dropped it before it
+ * is on screen where the plan wanted it, so a page that draws straight away
+ * draws in the wrong place first. The window still has to be mapped for the
+ * compositor to place it at all, so it is the page that stays blank rather than
+ * the window that stays down. Only the sessions that wait for a compositor start
+ * a page this way, and only the runtime marks one: nothing sets the attribute
+ * where a window places itself, so the rule below never matches there.
+ */
+:root[data-placement="pending"] body {
+  visibility: hidden;
+}

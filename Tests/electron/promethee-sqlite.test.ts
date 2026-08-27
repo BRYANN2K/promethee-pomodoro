@@ -11,17 +11,22 @@ import {
   resolvePrometheeDatabasePath
 } from "../../src/electron/promethee-sqlite.ts";
 
-test("resolves only the fixed macOS and Windows Promethee database locations", () => {
+test("resolves only the fixed macOS, Linux and Windows Promethee database locations", () => {
   assert.equal(
     resolvePrometheeDatabasePath("darwin", "/Users/test/Library/Application Support"),
     "/Users/test/Library/Application Support/Promethee/promethee.db"
   );
   assert.equal(
+    resolvePrometheeDatabasePath("linux", "/home/test/.config"),
+    "/home/test/.config/Promethee/promethee.db"
+  );
+  assert.equal(
     resolvePrometheeDatabasePath("win32", "C:\\Users\\test\\AppData\\Roaming"),
     "C:\\Users\\test\\AppData\\Roaming\\Promethee\\promethee.db"
   );
-  assert.equal(resolvePrometheeDatabasePath("linux", "/tmp"), null);
+  assert.equal(resolvePrometheeDatabasePath("freebsd", "/tmp"), null);
   assert.equal(resolvePrometheeDatabasePath("darwin", "relative"), null);
+  assert.equal(resolvePrometheeDatabasePath("linux", "relative"), null);
 });
 
 test("reads the allowlisted task and project projection", () => {
@@ -127,7 +132,8 @@ test("opens only the canonical regular promethee.db in the expected directory", 
   symlinkSync(realDatabasePath, databasePath);
   assert.equal(openPrometheeSqlite("darwin", root).status, "unsafe-path");
   assert.equal(openPrometheeSqlite("darwin", path.join(root, "missing")).status, "not-found");
-  assert.equal(openPrometheeSqlite("linux", root).status, "unsupported-platform");
+  assert.equal(openPrometheeSqlite("linux", root).status, "unsafe-path");
+  assert.equal(openPrometheeSqlite("freebsd", root).status, "unsupported-platform");
 });
 
 test("fails a task snapshot instead of returning malformed or overflow rows partially", () => {

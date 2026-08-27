@@ -315,7 +315,7 @@ Complete the stages in order. Record passed, failed, skipped, and unavailable ev
 
 A fake adapter currently validates the dependency-free portion of stage 7, but it cannot satisfy stages 0–6 or the real UI portion of stage 8. Static source inspection cannot satisfy a runtime stage.
 
-## 10. Verify macOS and Windows explicitly
+## 10. Verify macOS, Linux, and Windows explicitly
 
 Use the Promethee repository's real test and packaging commands after inspecting them. Do not copy commands from this companion without confirming their scope and side effects.
 
@@ -347,6 +347,20 @@ Use the Promethee repository's real test and packaging commands after inspecting
 - Display reconnect, sleep/wake, renderer restart, and packaged-app lifecycle retain the same contract semantics.
 - Authenticode is release evidence, not a substitute for bridge behavior verification.
 
+### Linux-specific evidence
+
+Promethee publishes no Linux build, so this target assumes a locally built Promethee. It attaches and observes on every session it can discover the HUD on, and acts only on one that offers both a capture and an injection mechanism.
+
+- Each supported window server answers on its own: Hyprland, Sway or i3, and X11. A session that advertises a compositor the helper cannot reach must fail closed rather than answer from a different display.
+- Hyprland's two configuration dialects, since the placement request is worded differently for each and `float` and `pin` are toggles whose current state has to be read before they are asked for.
+- Wayland placement of the companion's own surfaces only. A window the compositor does not report as owned by the helper's own parent process must never be moved, pinned, or unfocused.
+- Pointer behavior over the outline, which covers the real pill. Hyprland takes the request as `no_focus`; Sway and i3 have no way to ask it of a window already on screen, so the outline is refused there and taken down rather than left in the way, and the pointer boundary must be verified per compositor rather than assumed.
+- Which slot each session answers on, since capture and injection follow the window server that answered the window query rather than choosing for themselves. A Wayland session usually runs an X server too, and the two do not describe the same windows.
+- A capture that reads Promethee's own window rather than a rectangle of the screen. The HUD is translucent, so a screen rectangle carries whatever is behind it and the classifier's flatness gates cannot survive that. A refused capture must leave no file.
+- The press itself on any session other than Hyprland, and the two receipts that are not a permission: `automation-unsupported` for a session with no slot to ask, and the i3 refusal.
+- HUD discovery by window class rather than title, across a Promethee restart and a move between outputs with different scales.
+- Packaged-app lifecycle and display reconnect retain the same contract semantics.
+
 Record exact Promethee revision, Pomodoro revision, bridge protocol/capabilities, OS build, architecture, display scale/layout, and test result for every real-platform proof.
 
 ## Do not do these things
@@ -371,7 +385,7 @@ Record exact Promethee revision, Pomodoro revision, bridge protocol/capabilities
 - Do not let a Ready action start or resume Promethee without an explicit later-granted operation; tell the user to press real Play when it is absent.
 - Do not add a duplicate Pomodoro play/pause control.
 - Do not complete or edit a task as a side effect of a Pomodoro transition.
-- Do not claim Windows or macOS support from mocks, source inspection, screenshots, or CI configuration alone.
+- Do not claim Windows, Linux, or macOS support from mocks, source inspection, screenshots, or CI configuration alone.
 - Do not publish, sign, install dependencies, or migrate repositories as an incidental part of the bridge change.
 
 ## Completion checklist

@@ -3,14 +3,15 @@
     "Keep deterministic Pomodoro behavior independent from Electron and Promethee transport details.",
     "Keep every Promethee interaction behind the typed, versioned adapter and the accepted ADR-0014 external bridge composition.",
     "Read-only rows are limited to tasks, task_projects, and ADR-0013's eight minimal sessions fields; all writes, arbitrary table or content reads, credentials, tokens, cookies, private IPC, and raw-content diagnostics remain prohibited.",
-    "Native OS-mediated actions are limited to exact Pause and Resume for the same session on macOS and are never automatically retried; launch first passively refreshes capabilities and, only after onboarding is visible, may automatically invoke the native permission request at most once per process when required; macOS may show the Accessibility prompt/register the app but the user controls final System Settings toggles; Allow is the explicit retry path and phase transitions never request permission; Check again and Settings review remain preflight-only; the Control timer check derives from native-helper Input Events status; the Read timer check and HUD attachment require helper-reported Screen Recording plus a bounded readiness probe through the real /usr/sbin/screencapture with no retained image; Input Events may be skipped for passive use only after screen reading is verified and both automation settings are off; Not now is refused while screen reading is unavailable and otherwise persists both automation settings off without reopening recovery or requesting Input Events on later launches solely for its absence; an observed Screen Recording false-to-true request transition schedules one guarded relaunch that revokes authority, aborts native control and poll rescheduling, performs a bounded preference/task-time checkpoint wait, then invokes app.relaunch and app.exit; initial new installs default Pause on and Resume off; later enabling automation remains explicit; other persisted values remain unchanged; and the environment kill switch overrides both.",
-    "Each eligible macOS action performs two direct fresh SQLite session reads and two bounded HUD captures/classifications, with the second immediately before dispatch, and requires exact app/PID/HUD geometry/generation plus matching rendered Pause/Play layout evidence before one CoreGraphics action; Windows V1 has no Promethee automation and fails closed.",
+    "Native OS-mediated actions are limited to exact Pause and Resume for the same session on macOS, and under ADR-0021 on a Linux session that offers both a capture and an injection mechanism, and are never automatically retried; launch first passively refreshes capabilities and, only after onboarding is visible, may automatically invoke the native permission request at most once per process when required; macOS may show the Accessibility prompt/register the app but the user controls final System Settings toggles; Allow is the explicit retry path and phase transitions never request permission; Check again and Settings review remain preflight-only; the Control timer check derives from native-helper Input Events status; the Read timer check and HUD attachment require helper-reported Screen Recording plus a bounded readiness probe through the real /usr/sbin/screencapture with no retained image; Input Events may be skipped for passive use only after screen reading is verified and both automation settings are off; Not now is refused while screen reading is unavailable and otherwise persists both automation settings off without reopening recovery or requesting Input Events on later launches solely for its absence; an observed Screen Recording false-to-true request transition schedules one guarded relaunch that revokes authority, aborts native control and poll rescheduling, performs a bounded preference/task-time checkpoint wait, then invokes app.relaunch and app.exit; initial new installs default Pause on and Resume off; later enabling automation remains explicit; other persisted values remain unchanged; and the environment kill switch overrides both.",
+    "Each eligible macOS action performs two direct fresh SQLite session reads and two bounded HUD captures/classifications, with the second immediately before dispatch, and requires exact app/PID/HUD geometry/generation plus matching rendered Pause/Play layout evidence before one CoreGraphics action; Linux repeats the same preflight before one pointer press through the slot its own window server answers on, returns sent-unconfirmed, and answers automation-unsupported on a session with no slot; Windows V1 has no Promethee automation; every unmet condition fails closed.",
     "Fail closed when protocol, grants, geometry, exclusions, revisions, or platform behavior are unknown.",
     "Keep permission and missing-geometry recovery menus usable as centered current-display surfaces without HUD geometry; return to attached placement only after current safe geometry recovers, and bring the same popup forward on a second application launch.",
     "Keep the real Promethee timer visible and interactive; local surfaces must not intercept its controls or transient Accept surface.",
     "Reset timer restarts only the current local Pomodoro phase at its configured duration and never controls or resets Promethee.",
     "Select French when the primary operating-system language begins with fr and English otherwise until an explicit preference is implemented.",
     "Distribute the public unscoped promethee-pomodoro@1.0.1 npm package for macOS arm64, macOS x64, and passive Windows x64; every later stable latest publication requires exact manual approval and verified workflow/registry evidence.",
+    "Linux x64 is a configured build target that no published package contains: 1.0.1 provides no Linux runtime, and no release-tarball installation or smoke evidence exists for it.",
     "Treat install-electron.sh as a secondary macOS source path and defer native installers, Apple Developer ID/notarization, Windows Authenticode, and project-signed delivery.",
     "Treat the macOS installer's post-install Accessibility and ScreenCapture TCC reset for current and retired bundle identifiers as a temporary ad-hoc-cdhash workaround only; it never grants permissions, users must revalidate and regrant after every V1 rebuild or install, and future Apple Developer ID signing is the stable update-identity solution.",
     "The npm name was unclaimed at the 2026-08-26 E404 check; the separately approved 1.0.1 bootstrap used the exact workflow artifact and a short-lived authenticated 2FA session, registry readback passed, and the local session was revoked; later releases use the exact Trusted Publisher/OIDC workflow.",
@@ -68,10 +69,10 @@
         ],
         "tests": {
           "core": 33,
-          "electron": 133,
+          "electron": 144,
           "integration": 71,
           "persistence": 17,
-          "total": 254
+          "total": 265
         },
         "typecheck": true
       },
@@ -82,6 +83,7 @@
         "publication",
         "project-signing-or-notarization",
         "clean-install",
+        "linux-runtime",
         "windows-runtime",
         "cross-platform-support"
       ],
@@ -141,7 +143,7 @@
   ],
   "open_decisions": [
     "Clean macOS proof for first launch, denial, revocation, regrant, and application-identity permission changes; target identity; freshness and unknown-state semantics; broader supported-version proof; and independent Windows passive-runtime verification",
-    "Prove the host-wired Electron SQLite task/project slice with exact per-version fixtures, renderer isolation, database side-effect freedom, and independent macOS and Windows path/schema/runtime evidence",
+    "Prove the host-wired Electron SQLite task/project slice with exact per-version fixtures, renderer isolation, database side-effect freedom, and independent macOS, Linux, and Windows path/schema/runtime evidence",
     "Prove the host-wired ADR-0013 session observer with an exact synthetic 1.3.29 fixture, lifecycle/freshness cases, and evidence that observations never become acknowledgements or automatic-retry authority",
     "Extend the authorized macOS 1.3.29 same-session focus/pause/short-break/resume/focus evidence through broader reviewed product and platform flows without creating command acknowledgement; add cycle-snapshot lifecycle recovery separately",
     "Real HUD geometry, exclusions, and platform input/z-order proof",
@@ -155,7 +157,7 @@
   "project": {
     "kind": "desktop",
     "name": "promethee-pomodoro",
-    "summary": "An Electron and TypeScript Pomodoro companion for Promethee on macOS and Windows."
+    "summary": "An Electron and TypeScript Pomodoro companion for Promethee on macOS, Linux, and Windows."
   },
   "runtime": {
     "electron": "43.2.0",
@@ -184,7 +186,8 @@
   "target_platforms": [
     "macos-14+-arm64",
     "macos-14+-x64",
-    "windows-x64-passive"
+    "windows-x64-passive",
+    "linux-x64-unreleased"
   ],
   "test_roots": [
     "Tests/core",

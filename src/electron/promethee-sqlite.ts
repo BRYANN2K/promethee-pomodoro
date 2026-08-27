@@ -119,7 +119,7 @@ export function resolvePrometheeDatabasePath(
   platform: NodeJS.Platform,
   applicationDataDirectory: string
 ): string | null {
-  if (platform !== "darwin" && platform !== "win32") return null;
+  if (platform !== "darwin" && platform !== "linux" && platform !== "win32") return null;
   const platformPath = platform === "win32" ? path.win32 : path.posix;
   if (!platformPath.isAbsolute(applicationDataDirectory)) return null;
   return platformPath.join(applicationDataDirectory, "Promethee", "promethee.db");

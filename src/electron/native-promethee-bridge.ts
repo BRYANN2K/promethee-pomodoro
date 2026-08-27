@@ -113,10 +113,57 @@ export function shouldRelaunchAfterScreenPermissionRequest(
 }
 
 export function supportsAttachedRuntime(platform: NodeJS.Platform = process.platform): boolean {
-  return platform === "darwin" || platform === "win32";
+  return platform === "darwin" || platform === "linux" || platform === "win32";
 }
 
 export function supportsNativeAutomation(platform: NodeJS.Platform = process.platform): boolean {
+  return platform === "darwin" || platform === "linux";
+}
+
+// How long a press is given before the wait on it becomes a kill. macOS presses
+// through an API that answers or refuses in one call, so the original bound is
+// what it needs and it keeps it. Linux presses through a compositor it has to
+// hold a conversation with, and the helper bounds that conversation at 1.2s and
+// then owes itself another 0.5s to put the button back up and let go of the
+// display. Killing it inside its own bound is what would leave a button held
+// down on the user's session, so the wait here is set above the worst case the
+// helper can spend rather than at the figure that reads best.
+const NATIVE_CLICK_TIMEOUT_MS = 800;
+const LINUX_NATIVE_CLICK_TIMEOUT_MS = 2_500;
+
+export function nativeClickTimeoutMs(platform: NodeJS.Platform = process.platform): number {
+  return platform === "linux" ? LINUX_NATIVE_CLICK_TIMEOUT_MS : NATIVE_CLICK_TIMEOUT_MS;
+}
+
+// Where the consent for automation actually lives, which is not the same on both
+// platforms and is the difference the user has to be told about. On macOS the
+// system asks, records the answer, and keeps a pane to take it back through, so
+// the app's own switches sit on top of a grant the user can always revoke
+// elsewhere. On Linux nothing asks: the protocols that read the HUD and move the
+// pointer are open to any client that can reach the display, so there is no
+// prompt to see, no pane to open, and no revocation outside this app. The
+// switches are the whole of the consent there. Copy that points a Linux user at
+// system settings is pointing at something they do not have, and copy that
+// implies a grant they could withdraw is describing macOS.
+export type NativeAutomationConsentModel = "session" | "system";
+
+export function nativeAutomationConsentModel(
+  platform: NodeJS.Platform = process.platform
+): NativeAutomationConsentModel {
+  return platform === "darwin" ? "system" : "session";
+}
+
+// macOS always has a mechanism to ask, so a permission nobody has read yet is
+// safely taken to be withheld: the worst that assumption costs is one prompt.
+// Linux may have no mechanism at all, and there the same assumption is not
+// pessimism but a claim, that something is present and refused the app. It puts
+// the recovery UI in front of a session with nothing to recover and no setting
+// to go and change. So on a platform where the mechanism is not assured, every
+// answer the app could not read leaves the feature unavailable rather than
+// denied, and only the probe itself can report a refusal.
+export function nativeAutomationMechanismIsAssured(
+  platform: NodeJS.Platform = process.platform
+): boolean {
   return platform === "darwin";
 }
 
@@ -125,10 +172,11 @@ export function nativeBridgeExecutable(
   arch: NodeJS.Architecture = process.arch
 ): string | null {
   const supported = (platform === "darwin" && (arch === "arm64" || arch === "x64")) ||
+    (platform === "linux" && arch === "x64") ||
     (platform === "win32" && arch === "x64");
   if (!supported) return null;
   const targetDirectory = path.join(nativeDirectory, `${platform}-${arch}`);
-  if (platform === "darwin") return path.join(targetDirectory, "promethee-input-bridge");
+  if (platform === "darwin" || platform === "linux") return path.join(targetDirectory, "promethee-input-bridge");
   if (platform === "win32") return path.join(targetDirectory, "promethee-input-bridge.exe");
   return null;
 }
@@ -178,8 +226,9 @@ async function loadNativeAutomationPermissions(
 ): Promise<NativeAutomationPermissionStatus> {
   const platform = options.platform ?? process.platform;
   if (!supportsNativeAutomation(platform)) return unavailablePermissions(false);
+  const unreadable = unavailablePermissions(nativeAutomationMechanismIsAssured(platform));
   const executable = nativeBridgeExecutable(platform, options.arch);
-  if (executable === null) return unavailablePermissions(true);
+  if (executable === null) return unreadable;
   try {
     const { stdout } = await (options.executor ?? executeNativeBridge)({
       args: Object.freeze([command]),
@@ -187,13 +236,18 @@ async function loadNativeAutomationPermissions(
       maxBufferBytes: PROCESS_ID_MAX_BUFFER_BYTES,
       timeoutMs: PERMISSION_REQUEST_TIMEOUT_MS
     });
-    const match = /^permissions,([01]),([01])$/.exec(stdout.trim());
-    if (match === null) return unavailablePermissions(true);
+    const receipt = stdout.trim();
+    // The helper says this when the session has no mechanism to ask, which is a
+    // thing only Linux can be. It is not a denial, and it is the one refusal
+    // there is no point taking the user to their system settings over.
+    if (receipt === "automation-unsupported") return unavailablePermissions(false);
+    const match = /^permissions,([01]),([01])$/.exec(receipt);
+    if (match === null) return unreadable;
     const inputEvents = match[1] === "1";
     const screenCapture = match[2] === "1";
     return nativeAutomationPermissionStatus(inputEvents, screenCapture, true);
   } catch {
-    return unavailablePermissions(true);
+    return unreadable;
   }
 }
 

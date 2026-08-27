@@ -5,6 +5,7 @@ import {
   canArmNativeAutomation,
   effectiveNativeAutomationPermissionStatus,
   executeNativeBridge,
+  nativeAutomationMechanismIsAssured,
   nativeBridgeExecutable,
   nativeAutomationPermissionStatus,
   parseNativeProcessId,
@@ -92,20 +93,31 @@ test("registers missing grants once at startup without re-prompting passive scre
   assert.equal(shouldRequestNativePermissionsAtStartup(false, false, missing, true), false);
 });
 
-test("declares Windows as an attached passive runtime without native automation", () => {
+test("declares Windows as an attached passive runtime and Linux as one that can act", () => {
   assert.equal(supportsAttachedRuntime("darwin"), true);
   assert.equal(supportsAttachedRuntime("win32"), true);
-  assert.equal(supportsAttachedRuntime("linux"), false);
+  assert.equal(supportsAttachedRuntime("linux"), true);
+  assert.equal(supportsAttachedRuntime("freebsd"), false);
   assert.equal(supportsNativeAutomation("darwin"), true);
+  assert.equal(supportsNativeAutomation("linux"), true);
   assert.equal(supportsNativeAutomation("win32"), false);
+
+  // Saying Linux can act is not saying any given Linux session will. Whether a
+  // mechanism is there at all is a question only the session can answer, so the
+  // app never assumes one is present and refusing while nobody has looked.
+  assert.equal(nativeAutomationMechanismIsAssured("darwin"), true);
+  assert.equal(nativeAutomationMechanismIsAssured("linux"), false);
+  assert.equal(nativeAutomationMechanismIsAssured("win32"), false);
 });
 
 test("resolves the platform-specific native helper", () => {
   assert.match(nativeBridgeExecutable("darwin", "arm64") ?? "", /dist\/native\/darwin-arm64\/promethee-input-bridge$/);
   assert.match(nativeBridgeExecutable("darwin", "x64") ?? "", /dist\/native\/darwin-x64\/promethee-input-bridge$/);
+  assert.match(nativeBridgeExecutable("linux", "x64") ?? "", /dist\/native\/linux-x64\/promethee-input-bridge$/);
   assert.match(nativeBridgeExecutable("win32", "x64") ?? "", /dist\/native\/win32-x64\/promethee-input-bridge\.exe$/);
   assert.equal(nativeBridgeExecutable("win32", "arm64"), null);
-  assert.equal(nativeBridgeExecutable("linux"), null);
+  assert.equal(nativeBridgeExecutable("linux", "arm64"), null);
+  assert.equal(nativeBridgeExecutable("freebsd", "x64"), null);
 });
 
 test("parses only one bounded positive native process identifier", () => {
@@ -195,6 +207,51 @@ test("permission bootstrap exposes each macOS grant and fails closed on malforme
     executor: async () => Object.freeze({ stdout: "unexpected\n" }),
     platform: "darwin"
   }), { inputEvents: false, screenCapture: false, status: "unavailable", supported: true });
+});
+
+test("reads a Linux session that has no mechanism as unavailable rather than refused", async () => {
+  const unavailable = { inputEvents: false, screenCapture: false, status: "unavailable", supported: false };
+
+  // The helper's own word for a session that offers no slot to ask. There is no
+  // system setting behind this and no prompt to raise, so the app must not put
+  // the permission recovery UI in front of it.
+  assert.deepEqual(await readNativeAutomationPermissions({
+    arch: "x64",
+    executor: async () => Object.freeze({ stdout: "automation-unsupported\n" }),
+    platform: "linux"
+  }), unavailable);
+
+  // Anything the app could not read means the same thing there, for the same
+  // reason: on a platform that may have no mechanism, an unreadable answer is
+  // not evidence that one is present and said no. A helper that will not run at
+  // all is the ordinary way this happens, Linux being a source checkout.
+  assert.deepEqual(await readNativeAutomationPermissions({
+    arch: "x64",
+    executor: async () => Object.freeze({ stdout: "garbage\n" }),
+    platform: "linux"
+  }), unavailable);
+  assert.deepEqual(await readNativeAutomationPermissions({
+    arch: "x64",
+    executor: async () => { throw new Error("ENOENT"); },
+    platform: "linux"
+  }), unavailable);
+
+  // macOS keeps the opposite reading of the same two cases, because there the
+  // mechanism is certainly present and only its answer went missing.
+  assert.deepEqual(await readNativeAutomationPermissions({
+    arch: "arm64",
+    executor: async () => { throw new Error("ENOENT"); },
+    platform: "darwin"
+  }), { ...unavailable, supported: true });
+
+  // A slot that is present and says no is still a denial on Linux, and the two
+  // probes still answer independently: capture may work where injection does
+  // not, and the app is told exactly that rather than all or nothing.
+  assert.deepEqual(await readNativeAutomationPermissions({
+    arch: "x64",
+    executor: async () => Object.freeze({ stdout: "permissions,0,1\n" }),
+    platform: "linux"
+  }), { inputEvents: false, screenCapture: true, status: "denied", supported: true });
 });
 
 test("accepts a complete structured native failure but rejects partial output", async () => {

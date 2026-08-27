@@ -26,6 +26,8 @@ const MAC_APP_PAYLOAD_FILES = Object.freeze([
   "dist/electron/handle.css",
   "dist/electron/handle.html",
   "dist/electron/handle.js",
+  "dist/electron/linux-hud-capture.js",
+  "dist/electron/linux-surface-attachment.js",
   "dist/electron/macos-hud-capture.js",
   "dist/electron/main.js",
   "dist/electron/menu.css",

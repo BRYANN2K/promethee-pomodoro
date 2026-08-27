@@ -23,6 +23,8 @@
     "dist/electron/handle.html",
     "dist/electron/handle.js",
     "dist/electron/geometry-poll-cadence.js",
+    "dist/electron/linux-hud-capture.js",
+    "dist/electron/linux-surface-attachment.js",
     "dist/electron/macos-hud-capture.js",
     "dist/electron/native-promethee-bridge.js",
     "dist/electron/promethee-control.js",

@@ -265,6 +265,128 @@ test("accepts the reviewed 1.3.29 Play background delta and paused width", () =>
   });
 });
 
+// Every other fixture here paints its controls on the exact offsets the classifier
+// reads, so none of them can fail when an offset is a pixel out. Measured on
+// Hyprland at a HUD width of 145: the Pause bars sit at 92, 93, 96 and 97, their
+// midpoint is 94.5, and the offset counted back from the right edge is 94, so one
+// bar falls into the bucket the gap allows one pixel in. Reproduced here.
+//
+// The target is the assertion that matters. It stays on the offset, because that
+// is the value the native helpers recompute from the window they are pressing and
+// the only one they accept.
+test("reads a Pause glyph that straddles the offset without moving the target", () => {
+  const width = 145;
+  const data = new Uint8ClampedArray(width * 32 * 4);
+  const maxX = width - 1;
+  const trueCenterX = maxX - 50 + 0.5;
+  for (let y = 0; y < 32; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const offset = (y * width + x) * 4;
+      const control = [trueCenterX, maxX - 18 + 0.5]
+        .some((center) => (x - center) ** 2 + (y - 16) ** 2 <= 13 ** 2);
+      const value = control ? 87 : 43;
+      data[offset] = value;
+      data[offset + 1] = value;
+      data[offset + 2] = value;
+      data[offset + 3] = 255;
+    }
+  }
+  for (const offsetX of [-2, -1, 2, 3]) {
+    for (let offsetY = -5; offsetY <= 5; offsetY += 1) {
+      paintPixel(data, width, maxX - 50 + offsetX, 16 + offsetY, 235, 235, 235);
+    }
+  }
+  const raster = { data, height: 32, width };
+  assert.deepEqual(classifyPrometheeHudRaster(raster), {
+    controls: [
+      { x: 80, y: 2, width: 28, height: 28 },
+      { x: 112, y: 2, width: 28, height: 28 }
+    ],
+    state: "running",
+    status: "classified"
+  });
+  assert.deepEqual(planPrometheeHudAction(classifyPrometheeHudRaster(raster), "pause"), {
+    action: "pause",
+    expectedState: "running",
+    status: "ready",
+    target: { x: 80, y: 2, width: 28, height: 28 }
+  });
+});
+
+// Promethee's HUD is translucent, so a capture of the screen region it occupies
+// carries whatever is under it. Measured on Hyprland: over an empty desktop a
+// control ring reads a range of 0.0353 against a limit of 0.05, and over ordinary
+// application text the same ring reads 0.1778. The classifier has to refuse that,
+// because no threshold both admits a contaminated disc and still rejects a
+// non-disc. This is what stops a capture slot handing it a screen region.
+test("refuses a capture carrying what was behind a translucent HUD", () => {
+  const clean = captureFixture("running");
+  const { data, height, width } = clean.raster;
+  // A line of text under the HUD, blended in the way a translucent surface does.
+  for (let y = 14; y <= 19; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (x % 7 < 3) continue;
+      const offset = (y * width + x) * 4;
+      for (let channel = 0; channel < 3; channel += 1) {
+        data[offset + channel] = Math.round((data[offset + channel] ?? 0) * 0.55 + 210 * 0.45);
+      }
+    }
+  }
+  assert.deepEqual(classifyPrometheeHudRaster({ data, height, width }), { status: "unsupported" });
+});
+
+// The fixture triangle above is ten columns wide. A real Linux paused HUD draws
+// the same glyph six columns wide, and buckets pinned two columns from the
+// control centre then take one column of the flat edge against two of the point,
+// so the heavier-on-the-left test reads a triangle as no triangle. The pixels
+// below are transcribed from a 191x32 grim capture of Promethee 1.3.29 on
+// Hyprland 0.55.0, not drawn to a formula.
+test("reads a Play triangle that is narrower than the one the fixture draws", () => {
+  const width = 191;
+  const height = 32;
+  const data = new Uint8ClampedArray(width * height * 4);
+  const maxX = width - 1;
+  const centers = [maxX - 18, maxX - 50, maxX - 82];
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const offset = (y * width + x) * 4;
+      const value = centers.some((centerX) => (x - centerX) ** 2 + (y - 16) ** 2 <= 13 ** 2) ? 54 : 43;
+      data[offset] = value;
+      data[offset + 1] = value;
+      data[offset + 2] = value;
+      data[offset + 3] = 255;
+    }
+  }
+  drawStopGlyph(data, width, maxX - 50, 16);
+  // Row by row, as measured: six columns from the flat edge at -2 to the point
+  // at +3, over seven rows. The apex row is one pixel of antialiasing.
+  const rows: ReadonlyArray<readonly [number, number, number]> = [
+    [-4, -1, -1], [-3, -2, 1], [-2, -2, 2], [-1, -2, 3], [0, -2, 3], [1, -2, 2], [2, -2, 1]
+  ];
+  for (const [offsetY, firstX, lastX] of rows) {
+    for (let offsetX = firstX; offsetX <= lastX; offsetX += 1) {
+      paintPixel(data, width, maxX - 82 + offsetX, 16 + offsetY, 223, 99, 58);
+    }
+  }
+  const raster = { data, height, width };
+
+  assert.deepEqual(classifyPrometheeHudRaster(raster), {
+    controls: [
+      { x: 94, y: 2, width: 28, height: 28 },
+      { x: 126, y: 2, width: 28, height: 28 },
+      { x: 158, y: 2, width: 28, height: 28 }
+    ],
+    state: "paused",
+    status: "classified"
+  });
+  assert.deepEqual(planPrometheeHudAction(classifyPrometheeHudRaster(raster), "resume"), {
+    action: "resume",
+    expectedState: "paused",
+    status: "ready",
+    target: { x: 94, y: 2, width: 28, height: 28 }
+  });
+});
+
 test("never maps an adversarial paused Stop glyph to the running Pause target", async () => {
   const adversarial = captureFixture("paused");
   const maxX = adversarial.raster.width - 1;
@@ -549,8 +671,12 @@ test("indeterminate execution also locks until explicit reconciliation", async (
 test("fails before execution for unsupported, invalid, aborted, or unwired capture", async () => {
   let calls = 0;
   const executor: NativeInputExecutor = async () => { calls += 1; return { stdout: "clicked-unconfirmed,pause,7" }; };
-  assert.equal((await new NativePrometheeControl({ executor, platform: "linux" }).pressPause()).reason, "unsupported-platform");
   assert.equal((await new NativePrometheeControl({ executor, platform: "win32" }).pressPause()).reason, "unsupported-platform");
+  assert.equal((await new NativePrometheeControl({ executor, platform: "freebsd" }).pressPause()).reason, "unsupported-platform");
+  // Linux is past that gate now and stops at the next one instead: it has a
+  // helper that can press a control and nothing yet that can capture one, so
+  // what it lacks is an authority to act on, not a platform to act from.
+  assert.equal((await new NativePrometheeControl({ executor, platform: "linux" }).pressPause()).reason, "authority-unavailable");
 
   const macOS = new NativePrometheeControl({
     authority: async () => commandAuthority("running"),

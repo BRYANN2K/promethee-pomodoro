@@ -35,6 +35,38 @@ const runtimeApi = Object.freeze({
   toggleMenu: () => electron.ipcRenderer.send("runtime:toggle-menu")
 });
 
+// On the sessions that wait for a compositor, every page starts blank, because a
+// page that draws before its window has been placed draws in the wrong place.
+// Clearing that is the same work in all three pages and none of their business,
+// so the bridge does it rather than handing each renderer a placement to think
+// about. Nothing here runs anywhere else: the flag is only handed to the windows
+// of a session that needs it, so the pages ship unchanged for every platform
+// where a window places itself and none of them ever starts blank.
+// The spelling is `PLACEMENT_PENDING_ARGUMENT` in `linux-surface-attachment.ts`.
+if (process.argv.includes("--promethee-placement-pending")) {
+  let placed = false;
+  const applyPlacement = (): void => {
+    const root = document.documentElement;
+    // A preload runs before the parser has built the document root, so the first
+    // call has nothing to mark and the `readystatechange` below is what marks it.
+    if (root === null) return;
+    if (placed) root.removeAttribute("data-placement");
+    else root.setAttribute("data-placement", "pending");
+  };
+  applyPlacement();
+  // The parser fires this without giving the frame back, so the page is marked
+  // before it can be painted. Waiting for `DOMContentLoaded` would not be: the
+  // observers of the document root are only delivered once that has been raised.
+  document.addEventListener("readystatechange", applyPlacement);
+  electron.ipcRenderer.on("runtime:placement", (_event: electron.IpcRendererEvent, settled: unknown) => {
+    // Remembered rather than applied, because a placement can be confirmed while
+    // the root is still missing and the page would then be blanked again by the
+    // next call rather than shown.
+    placed = settled === true;
+    applyPlacement();
+  });
+}
+
 function subscribe(channel: string, listener: (payload: unknown) => void): () => void {
   const handler = (_event: electron.IpcRendererEvent, payload: unknown) => listener(payload);
   electron.ipcRenderer.on(channel, handler);

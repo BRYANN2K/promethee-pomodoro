@@ -25,7 +25,7 @@
         <div class="onboarding-heading">
           <p class="panel-kicker" data-copy="setup">SETUP</p>
           <h2 id="onboardingTitle" tabindex="-1" data-copy="onboardingTitle">One last setup</h2>
-          <p data-copy="onboardingIntro">Allow both macOS permissions once. Promethee Pomodoro stays limited to the timer HUD.</p>
+          <p id="onboardingIntro" data-copy="onboardingIntro">Allow both macOS permissions once. Promethee Pomodoro stays limited to the timer HUD.</p>
         </div>
         <div class="permission-list" role="list" aria-label="Required permissions" data-copy-aria="requiredPermissions">
           <div class="permission-row" id="inputPermissionRow" data-state="pending" role="listitem">
@@ -171,6 +171,7 @@
             <span><strong data-copy="autoResume">Auto-resume Promethee</strong><small data-copy="autoResumeHelp">Once when the break ends</small></span>
             <input id="autoResume" type="checkbox" aria-describedby="settingsNote" />
           </label>
+          <p class="settings-note" id="pointerNotice" data-copy="pointerNotice" hidden>Pause and Resume move the pointer onto the Promethee button. This session gives no way to put it back where it was.</p>
           <div class="setting-row update-row">
             <span><strong data-copy="permissions">Permissions</strong><small id="settingsPermissionStatus" data-copy="permissionPending">Waiting for approval</small></span>
             <button class="compact-button" id="reviewPermissions" type="button" data-copy="review">Review</button>

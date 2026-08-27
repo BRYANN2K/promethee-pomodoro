@@ -4,7 +4,7 @@
 
 Earlier on 2026-08-26, registry lookup returned `E404` for the unscoped name. The separately approved one-time bootstrap then published the exact workflow artifact with account 2FA; registry readback matched it, `latest` resolved to `1.0.1`, and the local bootstrap session was revoked. Later publications use the checked-in OIDC job and exact Trusted Publisher relationship described below.
 
-The dependency lock pins the explicitly approved Electron `43.2.0`. Current TypeScript/native source validation passes locally; this does not establish clean npm installation, a running packaged-runtime identity, or Windows runtime support.
+The dependency lock pins the explicitly approved Electron `43.2.0`. Current TypeScript/native source validation passes locally; this does not establish clean npm installation, a running packaged-runtime identity, or Linux and Windows runtime support.
 
 This is the operational reference for users and release maintainers. [ADR-0017](../architecture/decisions/0017-use-public-npm-as-the-v1-release-channel.md) selects the public unscoped npm package as the V1 channel. [ADR-0007](../architecture/decisions/0007-deliver-signed-releases-and-updates-through-ci.md) keeps Apple/Windows-signed native delivery as a later phase.
 
@@ -15,7 +15,8 @@ This is the operational reference for users and release maintainers. [ADR-0017](
 | macOS arm64 (macOS 14+) | Prebuilt `darwin-arm64` native helper in the npm tarball | Clean exact release-tarball installation plus Electron/helper smoke passed; one Promethee 1.3.29 live flow also passed | Public unsigned package; live evidence remains narrow |
 | macOS x64 | Prebuilt `darwin-x64` native helper in the npm tarball | Clean exact-package installation plus Electron/helper smoke passed | Public unsigned package; no recorded live Promethee result |
 | Windows x64 | Prebuilt `win32-x64` native helper in the npm tarball | Clean exact-package installation plus Electron/helper smoke passed | Public unsigned package; no recorded live Promethee result and automatic Pause/Resume is unavailable |
-| Windows arm64, Linux, other targets | None | None | Unsupported |
+| Linux x64 | None. The helper is built and self-tested in CI, and is deliberately excluded from the release, tarball, and smoke matrices | Helper and companion exercised on one live Hyprland session against a locally built Promethee; no release-tarball installation or smoke run exists, by design | Source-checkout target only; no published package carries a Linux runtime. Automatic Pause and Resume exist there under ADR-0021, on a session that offers a capture and an injection mechanism, and answer `automation-unsupported` on one that does not |
+| Windows arm64, Linux arm64, other targets | None | None | Unsupported |
 
 The macOS live evidence is one authorized Promethee 1.3.29 same-session focus → pause → short break → resume → focus exercise. It does not establish every macOS version, architecture, Promethee build, permission state, display topology, or install path. The release matrix establishes exact package installation and Electron/helper readiness at the package boundary; it is not live Promethee product support evidence.
 
@@ -124,7 +125,7 @@ npm install --global --prefix $candidatePrefix .\promethee-pomodoro-1.0.1.tgz --
 & (Join-Path $candidatePrefix 'promethee-pomodoro.cmd') --version
 ```
 
-These commands install and execute package/dependency code. Use only a reviewed tarball and disposable target. The configured release smoke checks installation, CLI version, expected helper presence, and bounded Electron readiness on all three targets. On macOS it also assembles the branded application in the runner's temporary directory, verifies its plist and ad hoc signature, and smoke-launches that exact executable. Smoke mode creates no product window, does not access Promethee, and does not exercise permissions or end-to-end behavior.
+These commands install and execute package/dependency code. Use only a reviewed tarball and disposable target. The configured release smoke checks installation, CLI version, expected helper presence, and bounded Electron readiness on all four targets. On macOS it also assembles the branded application in the runner's temporary directory, verifies its plist and ad hoc signature, and smoke-launches that exact executable. Smoke mode creates no product window, does not access Promethee, and does not exercise permissions or end-to-end behavior.
 
 ### Secondary local macOS Electron application
 
@@ -189,10 +190,11 @@ A maintainer may later deprecate a bad immutable version or move `latest` to a v
 `.github/workflows/ci.yml` is configured with read-only contents permission and immutable action revisions. Its matrix targets:
 
 - `darwin-arm64` on `macos-15`;
-- `darwin-x64` on `macos-15-intel`; and
+- `darwin-x64` on `macos-15-intel`;
+- `linux-x64` on `ubuntu-24.04`; and
 - `win32-x64` on `windows-2025`.
 
-Each job installs the lockfile with lifecycle scripts disabled, builds the platform helper and app, runs the npm test suite, confirms the expected target directory, and checks whitespace. macOS jobs also syntax-check the source installer. No configured run is evidence until GitHub reports it for the intended commit.
+One job installs the lockfile with lifecycle scripts disabled, type-checks the source, and runs the npm test suite. Each matrix job then installs the same lockfile, builds its platform helper, confirms the expected target directory belongs to the runner it built on, and runs the helper's own `self-test`, which answers `pause-resume` on macOS and Linux and `observe-only` on Windows. The Linux job also asserts `permission-status`, which has to answer `automation-unsupported` on a runner with no compositor, so the path that decides whether Linux automation exists at all cannot rot unnoticed, and a `capture` on that same runner, which has to refuse with `window-list-incomplete`, the answer of a session where no window server enumerated the HUD, and leave no file behind. That job first installs the X11 and Wayland development headers the helper compiles against. No configured run is evidence until GitHub reports it for the intended commit.
 
 ### Stable-tag release graph
 

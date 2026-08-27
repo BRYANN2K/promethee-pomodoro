@@ -8,7 +8,7 @@
 
 Promethee Pomodoro adds focus cycles, task-based time tracking, and freelance-ready CSV reports without creating a second work timer. Promethee stays in control of the real session; the companion adds a thin consuming outline and a compact attached menu.
 
-The project is open source and built with Electron, TypeScript, and npm for macOS and Windows.
+The project is open source and built with Electron, TypeScript, and npm for macOS, Linux, and Windows.
 
 <p align="center">
   <img src="assets/promethee-pomodoro-menu.png" width="720" alt="Promethee Pomodoro attached to the real Promethee timer, showing the Context menu and consuming focus outline">
@@ -52,7 +52,33 @@ npm install --global promethee-pomodoro@1.0.1 --no-audit --no-fund
 promethee-pomodoro
 ```
 
-On macOS, the first command prepares a branded `Promethee Pomodoro.app` in `~/Applications` when the CLI is launched. On Windows, the CLI starts the packaged Electron runtime directly. Native publisher certificates are deliberately deferred for V1, so operating-system reputation warnings can still appear.
+On macOS, the first command prepares a branded `Promethee Pomodoro.app` in `~/Applications` when the CLI is launched. On Windows, the CLI starts the packaged Electron runtime directly. It refuses Linux, which the published package cannot run: see [Linux requirements](#linux-requirements). Native publisher certificates are deliberately deferred for V1, so operating-system reputation warnings can still appear.
+
+### Linux requirements
+
+Linux x64 carries Pause and Resume where the session offers a way to send them, and observes like Windows everywhere else.
+
+The install command above does not cover it. Published packages carry macOS and Windows helpers only, so `npm install` gives you a package that cannot start here. `linux-x64` is a CI target: the helper is built and self-tested on every push, but it is deliberately kept out of the release, tarball, and smoke matrices until the target has real release evidence. Linux runs from a source checkout: `npm ci`, then `npm run target:build`, then `npm start`.
+
+Promethee itself publishes builds for macOS and Windows only, so this target assumes you already have a working locally built Promethee. The helper finds it by window class `promethee`, which is what Electron reports from the application name rather than from the executable's filename; discovery never reads window titles, so Promethee needs no particular window naming. Its database is read at the unchanged `~/.config/Promethee/promethee.db`.
+
+The native helper observes Promethee's window through the session's own window server, so one of these must be reachable:
+
+- Hyprland, through `$HYPRLAND_INSTANCE_SIGNATURE`;
+- Sway or i3, through `$SWAYSOCK`;
+- any X11 session, through `$DISPLAY`.
+
+A session that advertises a compositor the helper cannot reach fails closed instead of answering from a different display. Building the helper from source needs a C++20 compiler, `wayland-scanner`, and the Wayland and X11 development headers: `libwayland-dev libx11-dev libxcomposite-dev libxtst-dev` on Debian and Ubuntu, `wayland libx11 libxcomposite libxtst` on Arch.
+
+Pause and Resume work on a session that offers a mechanism for them, and say so rather than fail quietly on a session that does not. Reading the HUD asks the compositor for Promethee's own window rather than for a rectangle of the screen, because the HUD is translucent and a screen rectangle carries whatever is behind it. Pressing a control moves the seat pointer to it and leaves it there. Hyprland and Sway have been checked and offer both, and an X11 session offers both; other wlroots compositors such as river and Wayfire advertise the same protocols and have not been checked here. GNOME and KDE offer neither, so there the two automation settings report the feature as unavailable rather than as denied, since there is nothing on the machine to turn on. i3 can be read and is not pressed, because no i3 session has exercised the press. Nothing here needs a udev rule, a group, or root.
+
+Where the system asks for nothing, the two settings in **Settings** are the whole of the permission, and the panel says so instead of pointing at an operating-system pane that does not exist.
+
+Wayland gives a client no way to say where its own windows should go, so on a Wayland session the outline, the handle, and the menu cannot place themselves around the HUD. The helper asks the compositor for that placement, over the same socket the HUD geometry is read from. It floats, pins, and moves only the windows the compositor reports as owned by the app's own process, so it can move what this app drew and nothing else. Promethee's windows stay read-only. No compositor configuration is needed for any of this, and where geometry is unsafe rather than merely unplaced the surfaces hide instead of guessing.
+
+The outline covers the pill it draws around and asks Electron to be invisible to the mouse. That ask does not reach a Wayland compositor, which picks the window under the cursor by its box, so the pointer stops at the outline and the real timer underneath can no longer be dragged or paused. The same placement request says the outline is not a candidate for the window under the cursor, which restores it. Hyprland takes that as `no_focus`. Sway and i3 have no way to ask it of a window already on screen, so the helper places no outline there at all and says so in its receipt, and the app takes the outline down for the session: the pill goes uncircled rather than unusable.
+
+Placement is asked for on Hyprland and on Sway/i3 only. On X11 a window places itself and nothing has to be asked. A Wayland session running any other compositor keeps the unplaced surfaces, which are named `Promethee Pomodoro progress`, `Promethee Pomodoro menu handle`, and `Promethee Pomodoro` so a compositor rule can float, pin, and place them by hand.
 
 ### macOS source installation
 
@@ -78,7 +104,7 @@ See the [distribution guide](docs/releases/distribution-and-updates.md) for the 
 3. Work through Promethee's real controls. The outline consumes during focus and break; configure durations and automation in **Settings**.
 4. Review local totals in **History**, load older entries when needed, delete individual records, or export a CSV.
 
-Before first-launch setup is resolved, new macOS installs start with automatic Pause enabled and automatic Resume disabled. After the Screen Recording status plus bounded screen-reading probe pass, choosing **Not now** persists both settings as off and skips Input Events without reopening permission recovery; while screen reading is unavailable, the app keeps setup open because it cannot attach to the HUD. Later enabling either automation setting remains explicit. Existing saved preferences are preserved. `PROMETHEE_POMODORO_DISABLE_AUTOMATION=1` disables all Promethee automation. Windows provides no automatic Pause/Resume in V1.
+Before first-launch setup is resolved, new macOS installs start with automatic Pause enabled and automatic Resume disabled. After the Screen Recording status plus bounded screen-reading probe pass, choosing **Not now** persists both settings as off and skips Input Events without reopening permission recovery; while screen reading is unavailable, the app keeps setup open because it cannot attach to the HUD. Later enabling either automation setting remains explicit. Existing saved preferences are preserved. `PROMETHEE_POMODORO_DISABLE_AUTOMATION=1` disables all Promethee automation. Windows provides no automatic Pause/Resume in V1. Linux carries it on a session that offers a mechanism for it, and reports it as unavailable rather than denied on a session that does not; enabling it stays explicit there as it does on macOS.
 
 ## Local-first privacy
 
@@ -104,7 +130,8 @@ The interface follows the primary operating-system language:
 | macOS 14+ arm64 | Attached HUD/menu, local tracking/history/CSV, bounded Pause/Resume path | Exact release-tarball installation/Electron/helper smoke passed; one narrow Promethee 1.3.29 flow recorded; locally ad hoc signed, not Apple Developer ID signed or notarized |
 | macOS 14+ x64 | Same intended feature set | Exact release-tarball installation/Electron/helper smoke passed; live Promethee proof pending |
 | Windows x64 | Passive HUD attachment, tasks/session observation, local tracking/history/CSV, manual Pomodoro transitions | Exact release-tarball installation/Electron/helper smoke passed; automation unavailable and live Promethee proof pending |
-| Linux, Windows arm64, other targets | None | Unsupported |
+| Linux x64 (source checkout) | Attached HUD/menu, local tracking/history/CSV, and a bounded Pause/Resume path on a session that offers one, on Hyprland, Sway/i3 or X11, against a locally built Promethee | CI target only, not in any published package. One live Hyprland session attached to and followed the real running HUD with no compositor configuration and passed one authorized Pause/Resume round trip. Sway and X11 have answered every helper command against a synthetic client and never against a real Promethee; i3 is unexercised, so it is read and not pressed; GNOME and KDE offer neither mechanism and report automation as unavailable |
+| Linux arm64, Windows arm64, other targets | None | Unsupported |
 
 V1 is distributed as an npm runtime package rather than a signed native installer. There is no Apple Developer ID, notarization, or Windows Authenticode release. The release workflow built the native helpers independently, assembled one immutable tarball, and smoke-launched that exact installed artifact on macOS arm64, macOS x64, and Windows x64 before publication.
 
