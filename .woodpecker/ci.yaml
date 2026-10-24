@@ -1,0 +1,19 @@
+when:
+  - event: pull_request
+    branch: main
+  - event: push
+    branch: main
+  - event: manual
+
+steps:
+  - name: validate-source
+    image: docker.io/library/node:22.14.0-bookworm-slim@sha256:1c18d9ab3af4585870b92e4dbc5cac5a0dc77dd13df1a5905cea89fc720eb05b
+    backend_options:
+      kubernetes:
+        resources:
+          requests: {cpu: 250m, memory: 512Mi}
+          limits: {cpu: "2", memory: 2Gi}
+    commands:
+      - npm ci --ignore-scripts
+      - npm run target:typecheck
+      - npm test

@@ -1,12 +1,15 @@
 name: CI
 
+# Paused: GitHub Actions is blocked by billing. Woodpecker runs this as
+# .woodpecker/ci.yaml and native-macos.yaml. Restore the triggers below to switch back.
+#   push:
+#     branches:
+#       - main
+#   pull_request:
+#     branches:
+#       - main
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:
 
 permissions:
   contents: read
