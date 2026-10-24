@@ -1,0 +1,26 @@
+# darwin-arm64 only, on the Mac agent (local backend, Node 22 in PATH).
+# darwin-x64 and win32-x64 have no agent; see the PR description.
+when:
+  - event: pull_request
+    branch: main
+  - event: push
+    branch: main
+  - event: manual
+
+labels:
+  platform: darwin/arm64
+
+depends_on: [ci]
+
+steps:
+  - name: build-native-darwin-arm64
+    image: bash
+    environment:
+      RELEASE_TARGET: darwin-arm64
+    commands:
+      - node --version | grep -q '^v22\.' || { echo "Node 22 required on the Mac agent" >&2; exit 1; }
+      - npm ci --ignore-scripts
+      - npm run target:build:native
+      - test -d "dist/native/$RELEASE_TARGET"
+      - test "$(node -p 'process.platform + "-" + process.arch')" = "$RELEASE_TARGET"
+      - test "$("dist/native/$RELEASE_TARGET/promethee-input-bridge" self-test)" = "ready,1,pause-resume"
